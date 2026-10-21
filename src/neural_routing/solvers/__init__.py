@@ -1,5 +1,6 @@
 from neural_routing.solvers import (  # noqa: F401  (registration)
     heuristics,
+    local_search,
     neural,
     ortools_solver,
     pyvrp_solver,

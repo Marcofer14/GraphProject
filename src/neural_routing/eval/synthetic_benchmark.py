@@ -28,7 +28,7 @@ from neural_routing.eval.benchmark import add_gaps, parse_config, run_instance, 
 from neural_routing.ml.env import default_capacity
 from neural_routing.solvers import get_solver
 
-NEURAL = {"attention", "attention_greedy"}
+NEURAL = {"attention", "attention_greedy", "attention_ls"}
 DEFAULT_CONFIGS = ["nearest_neighbor", "savings", "ortools:1", "pyvrp:2", "attention"]
 
 

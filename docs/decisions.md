@@ -52,6 +52,17 @@ candidate tours (augmentations x POMO starts); each is scored by `core.evaluate`
 instance's own travel-time matrix and the best is returned. On synthetic data this is identical
 to the model's own choice; on asymmetric road networks it keeps the comparison honest.
 
+## ADR-010 · Local search on a giant tour, never worse than its input (2026-10-21)
+Neural construction leaves small, local defects (a crossing, a stop on the wrong route) that a
+classic local search removes in milliseconds. `solvers/local_search.py` runs 2-opt, or-opt (runs
+of 1–3 stops, forwards or reversed, any route) and swap on one *giant tour* array with depot
+separators, so intra- and inter-route moves share one numba-compiled code path. 2-opt is exact on
+asymmetric matrices via prefix sums of forward and backward arc costs, so it is ready for the
+Amazon matrices. Moves only see travel time; `polish` therefore rejects a result that adds
+lateness or travel, which makes it safe to bolt onto any solver. `attention_ls` polishes the 8 best
+decoded candidates (diversity matters more than polishing one), and `savings_ls` /
+`nearest_neighbor_ls` exist as controls to separate the network's contribution from the search's.
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

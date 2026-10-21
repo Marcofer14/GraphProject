@@ -105,7 +105,7 @@ def test_train_and_neural_solver_end_to_end(problem: str, tmp_path) -> None:  # 
 
     cap = np.inf if problem == "tsp" else default_capacity(8)
     inst = random_instance(8, seed=3, capacity=cap)
-    for name in ["attention", "attention_greedy"]:
+    for name in ["attention", "attention_greedy", "attention_ls"]:
         sol = get_solver(name, checkpoint=ckpt, device="cpu").solve(inst)
         m = evaluate(inst, sol)
         assert m.is_complete and m.capacity_excess == 0

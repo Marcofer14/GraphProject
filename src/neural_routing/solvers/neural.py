@@ -62,11 +62,13 @@ class AttentionSolver(Solver):
         augment: bool = True,
         multistart: bool = True,
         device: str | None = None,
+        polish_top: int = 0,
     ) -> None:
         self.checkpoint = checkpoint
         self.augment = augment
         self.multistart = multistart
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
+        self.polish_top = polish_top  # local-search the k best decoded candidates
 
     def _checkpoint_for(self, instance: VRPInstance) -> str:
         if self.checkpoint:
@@ -90,15 +92,30 @@ class AttentionSolver(Solver):
         P = instance.num_customers if self.multistart else 1
         _, _, actions = policy(batch, P, decode="greedy", forced_starts=self.multistart)
         candidates = actions.reshape(-1, actions.shape[-1]).tolist()
-        # score each distinct candidate with the real matrix and keep the best
-        best, best_cost = None, math.inf
+        # score each distinct candidate with the real matrix
+        scored = []
         for acts in {tuple(a) for a in candidates}:
             routes = split_routes(list(acts))
-            cost = evaluate(instance, Solution.from_lists(routes)).travel_time_s
-            if cost < best_cost:
-                best, best_cost = routes, cost
-        assert best is not None
-        return best
+            scored.append((evaluate(instance, Solution.from_lists(routes)).travel_time_s, routes))
+        scored.sort(key=lambda c: c[0])
+        if self.polish_top:
+            from neural_routing.solvers.local_search import polish
+
+            polished = [polish(instance, r) for _, r in scored[: self.polish_top]]
+            return min(
+                polished, key=lambda r: evaluate(instance, Solution.from_lists(r)).travel_time_s
+            )
+        return scored[0][1]
+
+
+@register("attention_ls")
+class AttentionLSSolver(AttentionSolver):
+    """Multi-start + augmentation, then 2-opt / or-opt / swap on the 8 best candidates."""
+
+    def __init__(
+        self, checkpoint: str | Path | None = None, device: str | None = None, polish_top: int = 8
+    ) -> None:
+        super().__init__(checkpoint, device=device, polish_top=polish_top)
 
 
 @register("attention_greedy")

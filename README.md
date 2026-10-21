@@ -91,6 +91,22 @@ more epochs at this size. **Size generalisation** is the weak spot: the
 CVRP-20 model drops to 4.2 % on CVRP-50, which is why the plan trains at the target size and adds
 a size curriculum in phase 3 (real routes have ~150 stops).
 
+**Hybrid: network + local search** (2-opt / or-opt / swap on the 8 best decoded candidates;
+same 200 instances per problem):
+
+| Solver | TSP-20 | CVRP-20 | CVRP-50 | Runtime (CVRP-50) |
+|---|---|---|---|---|
+| PyVRP (5–10 s) | 0 % | 0.16 % | 0.05 % | 10 s |
+| **Attention + POMO + local search** | **0.01 %** | **0.19 %** | **0.62 %** | **230 ms** |
+| Attention + POMO | 0.23 % | 0.67 % | 1.84 % | 220 ms |
+| Savings + local search | 0.53 % | 2.87 % | 3.58 % | <10 ms |
+| Savings | 7.15 % | 4.49 % | 5.11 % | <10 ms |
+
+Local search cuts the network's gap by about 3× for ~10 ms. The same search on top of savings
+stays far behind, so the gain comes from the network's starting points, not from the search
+alone: on CVRP-50 the hybrid is within 0.6 % of PyVRP at 1/40 of its runtime. Implementation
+notes in ADR-010.
+
 **Baseline ablation (TSP-20, same 200 instances, same inference code).**
 
 | Training | Multi-start ×8 aug. | Single greedy | Params | Trained trajectories | Hardware |

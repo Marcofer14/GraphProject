@@ -1,0 +1,16 @@
+# CVRP-50 on the Amazon-calibrated distribution: far station, clustered stops, real demands.
+# Checkpoints are saved as cvrp50_pomo_amazon*.pt, so they never overwrite the uniform model.
+# For several vans per instance add: data.stops_per_vehicle=15
+defaults:
+  - base
+  - _self_
+
+problem: cvrp
+num_customers: 50
+
+data:
+  distribution: amazon
+
+train:
+  batch_size: 32
+  epochs: 60

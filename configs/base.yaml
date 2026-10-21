@@ -2,6 +2,11 @@
 problem: tsp
 num_customers: 20
 
+data:
+  distribution: uniform   # uniform (Kool et al.) | amazon (calibrated, configs/generator/amazon.json)
+  generator_params: configs/generator/amazon.json
+  stops_per_vehicle: null # amazon only: rescale demands so a van holds ~this many stops
+
 model:
   embed_dim: 128
   num_heads: 8

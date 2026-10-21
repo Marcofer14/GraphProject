@@ -63,6 +63,27 @@ lateness or travel, which makes it safe to bolt onto any solver. `attention_ls` 
 decoded candidates (diversity matters more than polishing one), and `savings_ls` /
 `nearest_neighbor_ls` exist as controls to separate the network's contribution from the search's.
 
+## ADR-011 · Generator calibrated per van route, not per station-day (2026-10-21)
+The target the neural solver must reach is one van's day (~150 stops, ~20 zones), so the
+generator (`ml/generators.py`, parameters in `configs/generator/amazon.json`, fitted by
+`data/calibration.py` on all 6,112 routes) reproduces a route: a station ~17 km from the stops,
+zone centres spread ~1 km, stops ~0.2 km around their zone centre, real stop volumes and service
+times, and the real share/shape of time windows. Spreads are fitted as 2-D RMS distances and
+converted to per-axis standard deviations; the zone spread scales with sqrt(N / 150) because a
+smaller instance covers fewer, neighbouring zones. `notebooks/02_generator.ipynb` checks the result
+against real route slices: depot distance, customer spread, nearest-neighbour distance, load and
+window statistics all match within ~15 %.
+
+Two findings shape what comes next:
+* **Capacity barely binds on real routes** (150 stops fill ~74 % of a van) and most windows are
+  8 h wide. The real problem is a large, clustered TSP with a long stem. `data.stops_per_vehicle`
+  produces multi-van instances when the CVRP structure is wanted.
+* **Normalising with the depot squashes the customers.** With the station ~5x farther than the
+  delivery area is wide, customers occupy ~3 % of the unit square (median nearest-neighbour
+  distance 0.006 vs 0.076 for uniform data). Before training on this distribution the input
+  normalisation should be customer-centric (scale by the customers' bounding box, encode the
+  depot by direction and distance). Open item for phase 3.
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

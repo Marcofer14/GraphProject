@@ -107,6 +107,19 @@ stays far behind, so the gain comes from the network's starting points, not from
 alone: on CVRP-50 the hybrid is within 0.6 % of PyVRP at 1/40 of its runtime. Implementation
 notes in ADR-010.
 
+**Calibrated generator.** Training data so far was uniform. A generator fitted on all 6,112 real
+routes (ADR-011, `notebooks/02_generator.ipynb`) reproduces real route slices: far station,
+clustered stops, real loads and time windows.
+
+| Normalised statistic (50 customers) | Real | Calibrated | Uniform |
+|---|---|---|---|
+| Depot to customer centroid | 1.02 | 1.01 | 0.40 |
+| Customer spread | 0.031 | 0.036 | 0.377 |
+| Nearest-neighbour distance | 0.006 | 0.006 | 0.076 |
+| Load / van capacity | 0.24 | 0.25 | 6.3 |
+
+![real vs generated instances](docs/figures/generator_examples.png)
+
 **Baseline ablation (TSP-20, same 200 instances, same inference code).**
 
 | Training | Multi-start ×8 aug. | Single greedy | Params | Trained trajectories | Hardware |

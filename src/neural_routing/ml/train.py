@@ -19,6 +19,7 @@ import copy
 import json
 import logging
 import time
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
@@ -28,6 +29,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch.utils.tensorboard import SummaryWriter
 
 from neural_routing.ml.env import Batch, augment8, generate
+from neural_routing.ml.generators import generate_amazon_like, load_params
 from neural_routing.ml.model import AttentionPolicy, ModelConfig
 
 log = logging.getLogger(__name__)
@@ -103,6 +105,22 @@ class EarlyStopping:
         return self.patience is not None and self.stale_epochs >= self.patience
 
 
+def make_sampler(
+    cfg: DictConfig, device: torch.device
+) -> Callable[[int, torch.Generator | None], Batch]:
+    """Training/validation instances for ``cfg.data.distribution`` (uniform | amazon)."""
+    data = cfg.get("data") or {}
+    distribution = data.get("distribution", "uniform")
+    n, problem = cfg.num_customers, cfg.problem
+    if distribution == "uniform":
+        return lambda size, gen: generate(size, n, problem, device, gen)
+    if distribution == "amazon":
+        params = load_params(data.get("generator_params", "configs/generator/amazon.json"))
+        spv = data.get("stops_per_vehicle")
+        return lambda size, gen: generate_amazon_like(size, n, problem, device, gen, params, spv)[0]
+    raise ValueError(f"unknown data.distribution {distribution!r}")
+
+
 def _previous_history(experiment_dir: Path) -> list[dict[str, float]]:
     """History of the most recent earlier run (checkpoints written before resume support)."""
     found = sorted(experiment_dir.glob("*/history.json"))
@@ -120,7 +138,8 @@ def train(cfg: DictConfig) -> Path:
 
     policy = AttentionPolicy(ModelConfig(**cfg.model)).to(device)
     opt = torch.optim.Adam(policy.parameters(), lr=t_cfg.lr, weight_decay=t_cfg.weight_decay)
-    val = generate(t_cfg.val_size, n, problem, device, torch.Generator().manual_seed(1234))
+    sample = make_sampler(cfg, device)
+    val = sample(t_cfg.val_size, torch.Generator().manual_seed(1234))
 
     baseline_policy: AttentionPolicy | None = None
     baseline_val = float("inf")
@@ -130,7 +149,10 @@ def train(cfg: DictConfig) -> Path:
 
     run_dir = Path(t_cfg.run_dir)
     ckpt_dir = Path(t_cfg.checkpoint_dir)
-    tag = f"{problem}{n}_{t_cfg.baseline}"
+    distribution = (cfg.get("data") or {}).get("distribution", "uniform")
+    tag = f"{problem}{n}_{t_cfg.baseline}" + (
+        "" if distribution == "uniform" else f"_{distribution}"
+    )
     writer = SummaryWriter(str(run_dir))
     history: list[dict[str, float]] = []
     best_val, step, start_epoch, t0 = float("inf"), 0, 0, time.perf_counter()
@@ -171,7 +193,7 @@ def train(cfg: DictConfig) -> Path:
         policy.train()
         t_epoch = time.perf_counter()
         for _ in range(t_cfg.steps_per_epoch):
-            batch = generate(t_cfg.batch_size, n, problem, device)
+            batch = sample(t_cfg.batch_size, None)
             if pomo:
                 length, logp, _ = policy(batch, starts, decode="sample", forced_starts=True)
                 advantage = length - length.mean(dim=1, keepdim=True)
@@ -221,8 +243,8 @@ def train(cfg: DictConfig) -> Path:
             )  # fmt: skip
 
     writer.close()
-    log.info("best val length %.4f -> %s", best_val, ckpt_dir / f"{problem}{n}_{t_cfg.baseline}.pt")
-    return ckpt_dir / f"{problem}{n}_{t_cfg.baseline}.pt"
+    log.info("best val length %.4f -> %s", best_val, ckpt_dir / f"{tag}.pt")
+    return ckpt_dir / f"{tag}.pt"
 
 
 @hydra.main(version_base=None, config_path=str(CONFIG_DIR), config_name="tsp20")

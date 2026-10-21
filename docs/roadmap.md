@@ -34,7 +34,8 @@ flowchart LR
 | CVRP-50 → 100 epochs | nothing (resumes from checkpoint) | better release weights | local GPU (chain `D`) |
 | CVRP-100 | nothing | warm start for the curriculum | Colab T4 (`configs/cvrp100.yaml`) |
 | Local search ✅ (CVRP-50 gap 1.84 % → 0.62 %) | nothing | +quality for every neural model | CPU |
-| Calibrated generator | nothing (EDA done) | realistic training data | CPU |
+| Calibrated generator ✅ (matches real slices, notebook 02) | nothing | realistic training data | CPU |
+| **Customer-centric normalisation** (new, ADR-011) | generator | training on the real distribution | CPU |
 | Time windows (env + model) | nothing | CVRPTW training | CPU, then GPU tests |
 | CVRPTW-50 | generator + time windows | curriculum with windows | GPU |
 | Size curriculum | CVRP-100 + CVRPTW-50 | real-size model | GPU, overnight |

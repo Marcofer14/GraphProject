@@ -1,12 +1,13 @@
 # environments and data live outside OneDrive (junctions, see README)
-.venv/
-data/
-results/raw/
-results/smoke/
-runs/
-logs/
+# paths are anchored with a leading "/" so they never match package folders such as src/*/data/
+/.venv/
+/data/
+/results/raw/
+/results/smoke/
+/runs/
+/logs/
 # model weights are published as release assets, not committed
-checkpoints/
+/checkpoints/
 
 __pycache__/
 *.py[cod]

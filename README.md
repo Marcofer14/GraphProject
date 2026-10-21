@@ -19,7 +19,7 @@ benchmarked against OR-Tools, PyVRP and **real delivery drivers** on ~9,000 Amaz
 |---|---|---|
 | 0 | Repo, tooling, CI, data model, ETL, EDA | ✅ |
 | 1 | Baselines (NN, Clarke-Wright, OR-Tools, PyVRP) + evaluator + benchmark | ✅ |
-| 2 | Attention Model + POMO (REINFORCE) on TSP/CVRP, neural solver, synthetic benchmark | ✅ code · ⏳ CVRP-50 training |
+| 2 | Attention Model + POMO (REINFORCE) on TSP/CVRP, neural solver, synthetic benchmark | ✅ |
 | 3 | Time windows + calibrated generator + curriculum | |
 | 4 | Real asymmetric travel times (MatNet-style), fine-tuning, ONNX | |
 | 5–7 | FastAPI + OSRM backend, Next.js/deck.gl frontend, deployment | |
@@ -73,8 +73,20 @@ After ~35 minutes of training per problem on a GTX 1660 Super, the policy is wit
 PyVRP at 12–60× lower latency and beats OR-Tools on CVRP-20. Single greedy decoding is weak because
 POMO training always forces the first customer; multi-start decoding is the intended mode.
 
-**Size generalisation.** The CVRP-20 model on CVRP-50 instances drops to a 4.2 % gap (savings:
-5.1 %), which is why the plan trains at the target size and adds a size curriculum in phase 3.
+**CVRP-50** (200 instances; model trained 90 min at this size):
+
+| Solver | Gap | Runtime |
+|---|---|---|
+| PyVRP (10 s) | 0.02 % | 10 s |
+| **Attention + POMO (×8 aug.)** | **2.0 %** | **190 ms** |
+| OR-Tools (10 s) | 3.2 % (2 failures) | 10 s |
+| Clarke-Wright savings | 5.1 % | <10 ms |
+| OR-Tools (1 s) | 6.5 % (3 failures) | 1 s |
+| Attention, CVRP-20 model (size transfer) | 4.2 % | 210 ms |
+
+The network beats OR-Tools given 50× more time. **Size generalisation** is the weak spot: the
+CVRP-20 model drops to 4.2 % on CVRP-50, which is why the plan trains at the target size and adds
+a size curriculum in phase 3 (real routes have ~150 stops).
 
 ![training curves](docs/figures/training_curves.png)
 

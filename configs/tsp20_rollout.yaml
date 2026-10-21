@@ -1,0 +1,15 @@
+# Kool et al. (2019) setup: 3 BatchNorm layers, greedy-rollout baseline, single sample.
+defaults:
+  - base
+  - _self_
+
+problem: tsp
+num_customers: 20
+
+model:
+  num_layers: 3
+  norm: batch
+
+train:
+  baseline: rollout
+  batch_size: 512

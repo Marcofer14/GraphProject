@@ -1,0 +1,6 @@
+defaults:
+  - base
+  - _self_
+
+problem: cvrp
+num_customers: 20

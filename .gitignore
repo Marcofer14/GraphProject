@@ -1,0 +1,21 @@
+# environments and data live outside OneDrive (junctions, see README)
+.venv/
+data/
+results/raw/
+results/smoke/
+runs/
+logs/
+# model weights are published as release assets, not committed
+checkpoints/
+
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+.ipynb_checkpoints/
+*.egg-info/
+dist/
+wandb/

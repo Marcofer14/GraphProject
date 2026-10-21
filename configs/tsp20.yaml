@@ -1,0 +1,6 @@
+defaults:
+  - base
+  - _self_
+
+problem: tsp
+num_customers: 20

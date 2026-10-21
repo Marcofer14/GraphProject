@@ -60,17 +60,21 @@ as indicative; 6 days is a small sample.
 
 ### 3 · Neural solver vs classic (200 unseen synthetic instances)
 
-| Solver | TSP-20 gap | Runtime |
-|---|---|---|
-| PyVRP (5 s) / OR-Tools (1 s) | 0 % | 1–5 s |
-| **Attention + POMO (×8 aug.)** | **0.23 %** | **80 ms** |
-| Attention, single greedy rollout | 6.7 % | 60 ms |
-| Clarke-Wright savings | 7.2 % | <10 ms |
-| Nearest neighbour | 17.0 % | <1 ms |
+| Solver | TSP-20 gap | CVRP-20 gap | Runtime |
+|---|---|---|---|
+| PyVRP (5 s) | 0 % | 0.16 % | 5 s |
+| OR-Tools (1 s) | 0 % | 1.79 % (4 failures) | 1 s |
+| **Attention + POMO (×8 aug.)** | **0.23 %** | **0.67 %** | **80 ms** |
+| Attention, single greedy rollout | 6.7 % | 5.9 % | 60 ms |
+| Clarke-Wright savings | 7.2 % | 4.5 % | <10 ms |
+| Nearest neighbour | 17.0 % | 31.2 % | <1 ms |
 
-After 35 minutes of training on a GTX 1660 Super the policy is within 0.23 % of optimal at
-12–60× lower latency. Single greedy decoding is weak because POMO training always forces the first
-customer; multi-start decoding is the intended mode.
+After ~35 minutes of training per problem on a GTX 1660 Super, the policy is within 1 % of
+PyVRP at 12–60× lower latency and beats OR-Tools on CVRP-20. Single greedy decoding is weak because
+POMO training always forces the first customer; multi-start decoding is the intended mode.
+
+**Size generalisation.** The CVRP-20 model on CVRP-50 instances drops to a 4.2 % gap (savings:
+5.1 %), which is why the plan trains at the target size and adds a size curriculum in phase 3.
 
 ![training curves](docs/figures/training_curves.png)
 

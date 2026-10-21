@@ -73,18 +73,21 @@ After ~35 minutes of training per problem on a GTX 1660 Super, the policy is wit
 PyVRP at 12–60× lower latency and beats OR-Tools on CVRP-20. Single greedy decoding is weak because
 POMO training always forces the first customer; multi-start decoding is the intended mode.
 
-**CVRP-50** (200 instances; model trained 90 min at this size):
+**CVRP-50** (200 instances; model trained 60 epochs, best at 52, ~2.3 h; early stopping):
 
 | Solver | Gap | Runtime |
 |---|---|---|
 | PyVRP (10 s) | 0.02 % | 10 s |
-| **Attention + POMO (×8 aug.)** | **2.0 %** | **190 ms** |
-| OR-Tools (10 s) | 3.2 % (2 failures) | 10 s |
+| **Attention + POMO (×8 aug.)** | **1.81 %** (2.0 % at epoch 38) | **190–270 ms** |
+| OR-Tools (10 s) | 3.2–4.0 % (2 failures) | 10 s |
 | Clarke-Wright savings | 5.1 % | <10 ms |
 | OR-Tools (1 s) | 6.5 % (3 failures) | 1 s |
 | Attention, CVRP-20 model (size transfer) | 4.2 % | 210 ms |
 
-The network beats OR-Tools given 50× more time. **Size generalisation** is the weak spot: the
+The network beats OR-Tools given ~40× more time. OR-Tools' gap depends on how many benchmark
+workers share the CPU (3.2 % with 3, 4.0 % with 6), the network's does not. Training past epoch 40
+gave only 0.28 % on validation, so further gains will come from local search and curriculum, not
+more epochs at this size. **Size generalisation** is the weak spot: the
 CVRP-20 model drops to 4.2 % on CVRP-50, which is why the plan trains at the target size and adds
 a size curriculum in phase 3 (real routes have ~150 stops).
 

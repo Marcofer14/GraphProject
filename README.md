@@ -30,7 +30,51 @@ See [`results/`](results/) for the generated tables. Gap is relative to the best
 for each instance; every solver is scored by the same evaluator (`core/evaluate.py`).
 
 <!-- results:start -->
-_Run `uv run nr-bench` (see below) to fill this table._
+### 1 · Re-sequencing real routes (200 Amazon routes, ~150 stops each)
+
+| Solver | Driving time / route | vs. best | Runtime |
+|---|---|---|---|
+| PyVRP (10 s) | **3.11 h** | +0.05 % | 10 s |
+| PyVRP (1 s) | 3.13 h | +0.9 % | 1 s |
+| OR-Tools (10 s) | 3.21 h | +3.3 % | 10 s |
+| Clarke-Wright savings | 3.43 h | +10.9 % | 10 ms |
+| **Real driver** | 3.51 h | +13.9 % | — |
+| Nearest neighbour | 3.59 h | +15.8 % | <1 ms |
+
+Optimising the stop order alone cuts **~11 % of driving time** per van with the same stops and
+almost no late arrivals. Drivers trade some distance for zone-by-zone delivery (see the EDA), so
+part of the gap is a human preference the optimiser does not yet model.
+
+### 2 · Re-assigning whole station-days (6 days, ≤1,200 stops, same fleet)
+
+| Solver | Driving time / day | vs. best | Runtime |
+|---|---|---|---|
+| PyVRP (60 s) | **14.3 h** | +7.2 % | 60 s |
+| Clarke-Wright savings | 14.9 h | +10.4 % | 40 ms |
+| **Real drivers** | 15.3 h | +14.7 % | — |
+| OR-Tools (60 s) | 18.0 h | +20.1 % | 60 s |
+
+Pooling a station's day and re-assigning stops saves **~7 % of fleet hours**. OR-Tools does not
+converge on 1,000+ stops in 60 s. Cross-route travel times are estimated (ADR-005), so treat this
+as indicative; 6 days is a small sample.
+
+### 3 · Neural solver vs classic (200 unseen synthetic instances)
+
+| Solver | TSP-20 gap | Runtime |
+|---|---|---|
+| PyVRP (5 s) / OR-Tools (1 s) | 0 % | 1–5 s |
+| **Attention + POMO (×8 aug.)** | **0.23 %** | **80 ms** |
+| Attention, single greedy rollout | 6.7 % | 60 ms |
+| Clarke-Wright savings | 7.2 % | <10 ms |
+| Nearest neighbour | 17.0 % | <1 ms |
+
+After 35 minutes of training on a GTX 1660 Super the policy is within 0.23 % of optimal at
+12–60× lower latency. Single greedy decoding is weak because POMO training always forces the first
+customer; multi-start decoding is the intended mode.
+
+![training curves](docs/figures/training_curves.png)
+
+Full tables: [`results/`](results/).
 <!-- results:end -->
 
 ## Quick start

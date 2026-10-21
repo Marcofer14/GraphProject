@@ -80,6 +80,29 @@ def load_policy(path: Path | str, device: str = "cpu") -> tuple[AttentionPolicy,
     return policy, ckpt
 
 
+class EarlyStopping:
+    """Stop when validation has not improved by ``min_rel_delta`` for ``patience`` epochs.
+
+    The counter only resets on a *significant* improvement, while the best checkpoint is still
+    saved on any improvement. ``patience=None`` disables it.
+    """
+
+    def __init__(self, patience: int | None, min_rel_delta: float = 0.0) -> None:
+        self.patience = patience
+        self.min_rel_delta = min_rel_delta
+        self.reference = float("inf")
+        self.stale_epochs = 0
+
+    def update(self, val: float) -> bool:
+        """Record one validation result; True means stop training."""
+        if val < self.reference * (1 - self.min_rel_delta):
+            self.reference = val
+            self.stale_epochs = 0
+        else:
+            self.stale_epochs += 1
+        return self.patience is not None and self.stale_epochs >= self.patience
+
+
 def _previous_history(experiment_dir: Path) -> list[dict[str, float]]:
     """History of the most recent earlier run (checkpoints written before resume support)."""
     found = sorted(experiment_dir.glob("*/history.json"))
@@ -134,7 +157,17 @@ def train(cfg: DictConfig) -> Path:
         "%s%d · %s baseline · %.2fM params · %s", problem, n, t_cfg.baseline, params / 1e6, device
     )
 
+    es_cfg = t_cfg.get("early_stopping") or {}
+    stopper = EarlyStopping(es_cfg.get("patience"), es_cfg.get("min_rel_delta", 0.0))
+    stop = False
+    for h in history:  # replay so a resumed run keeps its patience counter
+        stop = stopper.update(h["val_length"])
+    if stop:
+        log.info("early stopping already reached in a previous run; nothing to do")
+
     for epoch in range(start_epoch, t_cfg.epochs):
+        if stop:
+            break
         policy.train()
         t_epoch = time.perf_counter()
         for _ in range(t_cfg.steps_per_epoch):
@@ -180,6 +213,12 @@ def train(cfg: DictConfig) -> Path:
             best_val = val_len
             save_checkpoint(ckpt_dir / f"{tag}.pt", policy, cfg, epoch=epoch, val_length=val_len)
         (run_dir / "history.json").write_text(json.dumps(history, indent=1))
+        stop = stopper.update(val_len)
+        if stop:
+            log.info(
+                "early stopping: no %.2f%% improvement in %d epochs (best %.4f)",
+                100 * stopper.min_rel_delta, stopper.patience, best_val,
+            )  # fmt: skip
 
     writer.close()
     log.info("best val length %.4f -> %s", best_val, ckpt_dir / f"{problem}{n}_{t_cfg.baseline}.pt")

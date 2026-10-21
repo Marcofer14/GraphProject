@@ -132,6 +132,43 @@ def test_training_resumes_from_last_checkpoint(tmp_path) -> None:  # type: ignor
     assert history[-1]["step"] == 6
 
 
+def test_early_stopping_counts_only_significant_improvements() -> None:
+    from neural_routing.ml.train import EarlyStopping
+
+    es = EarlyStopping(patience=2, min_rel_delta=0.01)
+    assert not es.update(10.0)  # first value sets the reference
+    assert not es.update(9.95)  # 0.5 % better: below the 1 % threshold, counts as stale
+    assert not es.update(9.80)  # 2 % better: resets the counter
+    assert not es.update(9.79)
+    assert es.update(9.78)  # second stale epoch in a row -> stop
+    assert not EarlyStopping(patience=None).update(1.0)
+
+
+def test_training_stops_early_and_stays_stopped_on_resume(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    import json
+
+    from omegaconf import OmegaConf
+
+    from neural_routing.ml.train import train
+
+    cfg = OmegaConf.load("configs/base.yaml")
+    cfg.num_customers = 6
+    # instance norm keeps no running statistics, so with lr = 0 the policy is truly frozen
+    # and validation never improves
+    cfg.model = {**cfg.model, **vars(SMALL), "norm": "instance"}
+    cfg.train.update(epochs=20, steps_per_epoch=1, batch_size=2, val_size=4, device="cpu", lr=0.0)
+    cfg.train.update(run_dir=str(tmp_path / "run"), checkpoint_dir=str(tmp_path / "ckpt"))
+    cfg.train.early_stopping = {"patience": 2, "min_rel_delta": 0.0}
+    del cfg["hydra"]
+    train(cfg)
+    history = json.loads((tmp_path / "run" / "history.json").read_text())
+    assert len(history) == 3  # best at epoch 0, then 2 stale epochs
+
+    cfg.train.run_dir = str(tmp_path / "run2")
+    train(cfg)  # resuming must not train past the stopping point
+    assert not (tmp_path / "run2" / "history.json").exists()
+
+
 def test_augment8_preserves_tour_length() -> None:
     batch, env, actions = random_rollout("tsp", B=2, P=1)
     aug = augment8(batch)

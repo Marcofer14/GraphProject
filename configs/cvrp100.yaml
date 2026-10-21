@@ -11,5 +11,5 @@ num_customers: 100
 train:
   batch_size: 64
   steps_per_epoch: 250
-  epochs: 40
+  epochs: 80              # upper bound; early stopping (base.yaml) usually ends it sooner
   val_size: 500

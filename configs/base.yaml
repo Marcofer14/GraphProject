@@ -24,6 +24,9 @@ train:
   seed: 0
   device: auto
   resume: auto            # auto = continue from checkpoints/<tag>_last.pt if present | null | path
+  early_stopping:         # stop after `patience` epochs without a >= min_rel_delta improvement
+    patience: 8           # null disables it; `epochs` is then just an upper bound
+    min_rel_delta: 0.001  # 0.1 % relative to the best validation length so far
   run_dir: runs/${problem}${num_customers}_${train.baseline}/${now:%Y%m%d-%H%M%S}
   checkpoint_dir: checkpoints
 

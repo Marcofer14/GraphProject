@@ -108,7 +108,8 @@ class AmazonDataset:
 
     def fit_travel_model(self, num_routes: int = 300, seed: int = 0) -> TravelTimeModel:
         rng = np.random.default_rng(seed)
-        ids = rng.choice(self.routes.index.to_numpy(), size=min(num_routes, len(self)), replace=False)
+        size = min(num_routes, len(self))
+        ids = rng.choice(self.routes.index.to_numpy(), size=size, replace=False)
         kms, secs = [], []
         for rid in ids:
             s = self._by_route[rid].sort_values("node")

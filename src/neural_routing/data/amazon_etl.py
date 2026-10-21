@@ -1,10 +1,11 @@
-"""ETL: Amazon Last Mile Routing Challenge JSON -> tidy Parquet tables + one memory-mappable matrix file.
+"""ETL: Amazon Last Mile Routing Challenge JSON -> Parquet tables + one memory-mappable matrix file.
 
 Output (``data/processed/<split>/``):
 
-* ``routes.parquet``   one row per route (station, date, departure, capacity, driver score, matrix offset)
+* ``routes.parquet``   one row per route (station, date, departure, capacity, driver score,
+                       matrix offset)
 * ``stops.parquet``    one row per stop, ``node`` = matrix index (0 = station), stop-level demand,
-                       service time and time window aggregated from its packages, driver's visit order
+                       service time and time window aggregated from its packages, driver's order
 * ``packages.parquet`` one row per package (dimensions, service time, time window)
 * ``durations.f32``    all travel-time matrices, float32, row-major, concatenated; route r occupies
                        ``[matrix_offset, matrix_offset + n_nodes**2)``
@@ -131,7 +132,8 @@ def build_packages(package_data: dict[str, Any], routes: pd.DataFrame) -> pd.Dat
     df["volume_cm3"] = df["depth_cm"] * df["height_cm"] * df["width_cm"]
     dep = df["route_id"].map(routes.set_index("route_id")["departure_utc"])
     for col in ("tw_start", "tw_end"):
-        ts = pd.to_datetime(df[col].where(df[col].map(lambda x: isinstance(x, str))), errors="coerce")
+        is_str = df[col].map(lambda x: isinstance(x, str))
+        ts = pd.to_datetime(df[col].where(is_str), errors="coerce")
         df[col + "_s"] = (ts - dep).dt.total_seconds()
     return df.drop(columns=["tw_start", "tw_end"])
 
@@ -187,9 +189,9 @@ def run(split: str, raw_root: Path = RAW_ROOT, out_root: Path = OUT_ROOT) -> Pat
     packages = build_packages(_load_json(files["package"]), routes)
     stop_agg = aggregate_stop_windows(packages)
     stops = stops.merge(stop_agg, on=["route_id", "stop_id"], how="left")
-    stops[["n_packages", "volume_cm3", "service_s"]] = (
-        stops[["n_packages", "volume_cm3", "service_s"]].fillna(0)
-    )
+    stops[["n_packages", "volume_cm3", "service_s"]] = stops[
+        ["n_packages", "volume_cm3", "service_s"]
+    ].fillna(0)
 
     log.info("travel-time matrices")
     offsets = write_matrices(files["travel"], stops, out / "durations.f32")

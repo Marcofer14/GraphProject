@@ -140,6 +140,19 @@ class EarlyStopping:
         return self.patience is not None and self.stale_epochs >= self.patience
 
 
+def experiment_name(cfg: DictConfig) -> str:
+    """Checkpoint and run-folder name: ``train.tag`` or <problem><n>_<baseline>[_<distribution>]."""
+    distribution = (cfg.get("data") or {}).get("distribution", "uniform")
+    default = f"{cfg.problem}{cfg.num_customers}_{cfg.train.baseline}" + (
+        "" if distribution == "uniform" else f"_{distribution}"
+    )
+    return str(cfg.train.get("tag") or default)
+
+
+# ${run_name:} in configs/base.yaml, so experiments with different data or tags never share a folder
+OmegaConf.register_new_resolver("run_name", lambda *, _root_: experiment_name(_root_), replace=True)
+
+
 def make_sampler(
     cfg: DictConfig, device: torch.device
 ) -> Callable[[int, torch.Generator | None], Batch]:
@@ -187,11 +200,7 @@ def train(cfg: DictConfig) -> Path:
 
     run_dir = Path(t_cfg.run_dir)
     ckpt_dir = Path(t_cfg.checkpoint_dir)
-    distribution = (cfg.get("data") or {}).get("distribution", "uniform")
-    default_tag = f"{problem}{n}_{t_cfg.baseline}" + (
-        "" if distribution == "uniform" else f"_{distribution}"
-    )
-    tag = t_cfg.get("tag") or default_tag  # explicit names keep ablation runs apart
+    tag = experiment_name(cfg)  # explicit train.tag keeps ablation runs apart
     writer = SafeWriter(str(run_dir))
     history: list[dict[str, float]] = []
     best_val, step, start_epoch, t0 = float("inf"), 0, 0, time.perf_counter()

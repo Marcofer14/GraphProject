@@ -112,6 +112,23 @@ def test_training_on_amazon_distribution(tmp_path: Path) -> None:
     assert math.isfinite(torch.load(ckpt, weights_only=False)["val_length"])
 
 
+def test_run_folder_follows_the_experiment_name() -> None:
+    from hydra import compose, initialize_config_dir
+
+    from neural_routing.ml.train import CONFIG_DIR
+
+    with initialize_config_dir(config_dir=str(CONFIG_DIR), version_base=None):
+        names = {
+            c: compose(config_name=c).train.run_dir.split("/")[1]
+            for c in ("cvrp50", "cvrp50_amazon", "cvrp50_amazon_all")
+        }
+    assert names == {
+        "cvrp50": "cvrp50_pomo",
+        "cvrp50_amazon": "cvrp50_pomo_amazon",
+        "cvrp50_amazon_all": "cvrp50_pomo_amazon_all",
+    }
+
+
 @pytest.mark.parametrize("bad", ["gaussian"])
 def test_unknown_distribution(bad: str, tmp_path: Path) -> None:
     from omegaconf import OmegaConf

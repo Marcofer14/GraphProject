@@ -1,0 +1,15 @@
+# Measured on a GTX 1660 Super: ~0.075 GB per instance, step time almost flat in batch size
+# (~0.8-1.0 s/step, the decoding loop is Python-bound), so a large batch is nearly free.
+# batch 64 -> ~3.2 GB; 250 steps/epoch x 40 epochs -> ~3 h on either the 1660 or a Colab T4.
+defaults:
+  - base
+  - _self_
+
+problem: cvrp
+num_customers: 100
+
+train:
+  batch_size: 64
+  steps_per_epoch: 250
+  epochs: 40
+  val_size: 500

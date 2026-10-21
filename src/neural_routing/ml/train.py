@@ -120,7 +120,8 @@ def train(cfg: DictConfig) -> Path:
         if "optimizer" in ckpt:
             opt.load_state_dict(ckpt["optimizer"])
         history = ckpt.get("history") or _previous_history(run_dir.parent)
-        start_epoch, step = ckpt["epoch"] + 1, ckpt.get("step", 0)
+        start_epoch = ckpt["epoch"] + 1
+        step = ckpt.get("step", start_epoch * t_cfg.steps_per_epoch)
         best_val = min((h["val_length"] for h in history), default=ckpt["val_length"])
         t0 -= history[-1]["elapsed_s"] if history else 0.0
         if baseline_policy is not None:

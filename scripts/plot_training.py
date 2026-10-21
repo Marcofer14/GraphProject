@@ -31,14 +31,14 @@ def latest_run(exp_dir: Path) -> Path | None:
     return found[-1] if found else None
 
 
-def trajectories_per_step(run_dir: Path) -> float:
+def trajectories_per_epoch(run_dir: Path) -> float:
     cfg_path = run_dir / ".hydra" / "config.yaml"
     cfg: dict[str, Any] = yaml.safe_load(cfg_path.read_text()) if cfg_path.exists() else {}
     train = cfg.get("train", {})
-    batch = train.get("batch_size", 64)
+    per_step = train.get("batch_size", 64)
     if train.get("baseline", "pomo") == "pomo":
-        return float(batch * (train.get("num_starts") or cfg.get("num_customers", 20)))
-    return float(batch)
+        per_step *= train.get("num_starts") or cfg.get("num_customers", 20)
+    return float(per_step * train.get("steps_per_epoch", 500))
 
 
 def series(history_path: Path, x: str) -> tuple[list[float], list[float]]:
@@ -48,9 +48,9 @@ def series(history_path: Path, x: str) -> tuple[list[float], list[float]]:
         xs = [h["elapsed_s"] / 60 for h in hist]
     elif x == "epoch":
         xs = [h["epoch"] + 1 for h in hist]
-    else:
-        per_step = trajectories_per_step(history_path.parent)
-        xs = [h["step"] * per_step / 1e6 for h in hist]
+    else:  # from the epoch index: the logged step counter restarted in early resumed runs
+        per_epoch = trajectories_per_epoch(history_path.parent)
+        xs = [(h["epoch"] + 1) * per_epoch / 1e6 for h in hist]
     return xs, ys
 
 

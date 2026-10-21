@@ -88,6 +88,21 @@ The network beats OR-Tools given 50× more time. **Size generalisation** is the 
 CVRP-20 model drops to 4.2 % on CVRP-50, which is why the plan trains at the target size and adds
 a size curriculum in phase 3 (real routes have ~150 stops).
 
+**Baseline ablation (TSP-20, same 200 instances, same inference code).**
+
+| Training | Multi-start ×8 aug. | Single greedy | Params | Trained trajectories | Hardware |
+|---|---|---|---|---|---|
+| POMO shared baseline (Kwon 2020), 6 layers, InstanceNorm | **0.23 %** | 6.71 % | 1.30 M | 19.2 M | GTX 1660 S, 35 min |
+| Greedy-rollout baseline (Kool 2019), 3 layers, BatchNorm | 0.34 % | **2.10 %** | 0.71 M | 7.7 M | Colab T4, 40 min |
+
+Each method wins at what it trains for: POMO always forces the first customer, so it is best when
+all N starts are decoded and poor at a single rollout; the rollout policy learns the first move
+too and is 3× better in one shot. Per trained trajectory the curves are close (below); the
+comparison also differs in architecture, so it is indicative rather than a clean single-factor
+ablation. For the real-time re-planner, decode with POMO multi-start (~60 ms).
+
+![baseline ablation](docs/figures/ablation_tsp20.png)
+
 ![training curves](docs/figures/training_curves.png)
 
 Full tables: [`results/`](results/).

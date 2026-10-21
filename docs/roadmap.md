@@ -38,5 +38,6 @@ flowchart LR
 | Customer-centric normalisation ✅ code (ADR-012) · ⏳ experiment | GPU free after CVRP-100 | training on the real distribution | GPU, ~2 h ×2 |
 | Time windows (env + model) | nothing | CVRPTW training | CPU, then GPU tests |
 | CVRPTW-50 | generator + time windows | curriculum with windows | GPU |
-| Size curriculum | CVRP-100 + CVRPTW-50 | real-size model | GPU, overnight |
+| CVRP-100 ✅ (1.34 % with local search; stopped at epoch 55) | — | warm start for the curriculum | done |
+| Size curriculum | CVRPTW-50 (+ normalisation experiment) | real-size model | GPU, overnight |
 | Amazon test | curriculum + local search | the headline number of phase 3 | GPU + CPU |

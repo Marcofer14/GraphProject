@@ -12,7 +12,7 @@ import urllib.request
 from pathlib import Path
 
 REPO = "Marcofer14/GraphProject"
-MODELS = ["tsp20_pomo.pt", "cvrp20_pomo.pt", "cvrp50_pomo.pt"]
+MODELS = ["tsp20_pomo.pt", "cvrp20_pomo.pt", "cvrp50_pomo.pt", "cvrp100_pomo.pt"]
 
 
 def main() -> None:

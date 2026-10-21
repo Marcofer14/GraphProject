@@ -102,6 +102,19 @@ same 200 instances per problem):
 | Savings + local search | 0.53 % | 2.87 % | 3.58 % | <10 ms |
 | Savings | 7.15 % | 4.49 % | 5.11 % | <10 ms |
 
+**CVRP-100** (100 instances; model trained 56 epochs, ~3.5 h on the GTX 1660 Super):
+
+| Solver | Gap | Runtime |
+|---|---|---|
+| PyVRP (20 s) | 0 % | 20 s |
+| **Attention + POMO + local search** | **1.34 %** | **0.66 s** |
+| Attention + POMO | 3.53 % | 0.65 s |
+| Savings + local search | 3.91 % | 10 ms |
+| OR-Tools (20 s) | 6.41 % (6 failures) | 20 s |
+
+The hybrid's gap grows with size (0.19 % → 0.62 % → 1.34 % for 20/50/100 customers) but it still
+beats OR-Tools by ~5 points at 1/30 of its runtime.
+
 Local search cuts the network's gap by about 3× for ~10 ms. The same search on top of savings
 stays far behind, so the gain comes from the network's starting points, not from the search
 alone: on CVRP-50 the hybrid is within 0.6 % of PyVRP at 1/40 of its runtime. Implementation

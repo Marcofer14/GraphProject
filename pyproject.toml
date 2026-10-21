@@ -70,6 +70,9 @@ target-version = "py312"
 select = ["E", "F", "W", "I", "N", "UP", "B", "SIM", "NPY", "RUF"]
 ignore = ["N803", "N806", "N812"]  # math-style names (D, N, Q), torch's `F` convention
 
+[tool.ruff.lint.isort]
+known-first-party = ["neural_routing"]
+
 [tool.ruff.lint.per-file-ignores]
 "notebooks/*" = ["E501", "E702", "E402"]
 

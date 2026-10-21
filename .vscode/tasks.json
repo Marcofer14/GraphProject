@@ -1,0 +1,104 @@
+{
+    // Run with Ctrl+Shift+P -> "Tasks: Run Task", or Ctrl+Shift+B for the default build task.
+    // Training resumes automatically from checkpoints/<problem><n>_pomo_last.pt.
+    "version": "2.0.0",
+    "options": {
+        "env": { "PYTHONUTF8": "1" }
+    },
+    "windows": {
+        "options": { "shell": { "executable": "powershell.exe", "args": ["-NoProfile", "-Command"] } }
+    },
+    "tasks": [
+        {
+            "label": "Train: CVRP-50 to 100 epochs",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "cvrp50", "train.epochs=100"],
+            "group": { "kind": "build", "isDefault": true },
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
+            "label": "Train: CVRP-100 (~3 h)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "cvrp100"],
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
+            "label": "Train: pick config",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "${input:config}", "${input:overrides}"],
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
+            "label": "Bench: CVRP-50 after 100 epochs",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.eval.synthetic_benchmark", "--problem", "cvrp", "--size", "50",
+                     "--n", "200", "--workers", "6", "--configs", "pyvrp:10", "ortools:10", "attention",
+                     "--checkpoint", "checkpoints/cvrp50_pomo.pt", "--tag", "e100"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Bench: CVRP-100",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.eval.synthetic_benchmark", "--problem", "cvrp", "--size", "100",
+                     "--n", "100", "--workers", "6", "--configs", "savings", "pyvrp:20", "ortools:20",
+                     "attention", "--checkpoint", "checkpoints/cvrp100_pomo.pt"],
+            "problemMatcher": []
+        },
+        {
+            "label": "TensorBoard (live curves)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/tensorboard.exe",
+            "args": ["--logdir", "runs", "--port", "6006"],
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated" }
+        },
+        {
+            "label": "Plot training curves",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["scripts/plot_training.py", "--x", "epoch"],
+            "problemMatcher": []
+        },
+        {
+            "label": "GPU usage (refresh 2 s)",
+            "type": "shell",
+            "command": "nvidia-smi",
+            "args": ["-l", "2", "--query-gpu=utilization.gpu,memory.used,memory.total,temperature.gpu",
+                     "--format=csv"],
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated" }
+        },
+        {
+            "label": "Check: lint + types + tests",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/ruff.exe check . ; ${workspaceFolder}/.venv/Scripts/mypy.exe ; ${workspaceFolder}/.venv/Scripts/python.exe -m pytest -p no:warnings",
+            "group": "test",
+            "problemMatcher": []
+        }
+    ],
+    "inputs": [
+        {
+            "id": "config",
+            "type": "pickString",
+            "description": "Training config (configs/*.yaml)",
+            "options": ["tsp20", "cvrp20", "cvrp50", "cvrp100", "tsp20_rollout"],
+            "default": "cvrp50"
+        },
+        {
+            "id": "overrides",
+            "type": "promptString",
+            "description": "Hydra overrides, e.g. train.epochs=100 (Enter for none)",
+            "default": "train.resume=auto"
+        }
+    ]
+}

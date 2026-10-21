@@ -139,6 +139,10 @@ uv run nr-bench-synth --problem cvrp --size 20 --configs savings ortools:1 pyvrp
 uv run pytest && uv run ruff check . && uv run mypy
 ```
 
+**VS Code:** open the folder and accept the recommended extensions; `.vscode/` selects the `.venv`
+interpreter and adds tasks (`Ctrl+Shift+P` → *Tasks: Run Task*: train, benchmark, TensorBoard, GPU
+monitor, checks) and debug configurations (`F5`).
+
 **No local GPU?** Train any config on a free Colab T4 (checkpoints on Google Drive, auto-resume):
 [![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Marcofer14/GraphProject/blob/main/notebooks/colab_train.ipynb)
 

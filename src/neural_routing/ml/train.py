@@ -15,11 +15,13 @@ Usage::
 
 from __future__ import annotations
 
+import contextlib
 import copy
 import json
 import logging
 import time
 from collections.abc import Callable
+from functools import partial
 from pathlib import Path
 from typing import Any
 
@@ -59,19 +61,52 @@ def evaluate_policy(
     return torch.cat(out)
 
 
+def _retry_io(action: Callable[[], object], what: str, attempts: int = 5) -> None:
+    """File syncers and antivirus scanners (e.g. OneDrive) can lock a file for a moment."""
+    for attempt in range(attempts):
+        try:
+            action()
+            return
+        except OSError as exc:
+            if attempt == attempts - 1:
+                raise
+            log.warning("writing %s failed (%s), retrying", what, exc)
+            time.sleep(2**attempt)
+
+
+class SafeWriter:
+    """TensorBoard logging that can never kill a training run: the first failure disables it."""
+
+    def __init__(self, log_dir: str) -> None:
+        self.writer: SummaryWriter | None = SummaryWriter(log_dir)
+
+    def add_scalar(self, tag: str, value: float, step: int) -> None:
+        if self.writer is None:
+            return
+        try:
+            self.writer.add_scalar(tag, value, step)
+        except Exception as exc:  # any logging error is non-fatal by design
+            log.warning("TensorBoard logging disabled after error: %s", exc)
+            self.close()
+
+    def close(self) -> None:
+        writer, self.writer = self.writer, None
+        if writer is not None:
+            with contextlib.suppress(Exception):
+                writer.close()
+
+
 def save_checkpoint(path: Path, policy: AttentionPolicy, cfg: DictConfig, **extra: Any) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    torch.save(
-        {
-            "model_config": vars(policy.cfg),
-            "state_dict": policy.state_dict(),
-            "problem": cfg.problem,
-            "num_customers": cfg.num_customers,
-            "train_config": OmegaConf.to_container(cfg, resolve=True),
-            **extra,
-        },
-        path,
-    )
+    payload = {
+        "model_config": vars(policy.cfg),
+        "state_dict": policy.state_dict(),
+        "problem": cfg.problem,
+        "num_customers": cfg.num_customers,
+        "train_config": OmegaConf.to_container(cfg, resolve=True),
+        **extra,
+    }
+    _retry_io(lambda: torch.save(payload, path), str(path))
 
 
 def load_policy(path: Path | str, device: str = "cpu") -> tuple[AttentionPolicy, dict[str, Any]]:
@@ -157,7 +192,7 @@ def train(cfg: DictConfig) -> Path:
         "" if distribution == "uniform" else f"_{distribution}"
     )
     tag = t_cfg.get("tag") or default_tag  # explicit names keep ablation runs apart
-    writer = SummaryWriter(str(run_dir))
+    writer = SafeWriter(str(run_dir))
     history: list[dict[str, float]] = []
     best_val, step, start_epoch, t0 = float("inf"), 0, 0, time.perf_counter()
 
@@ -238,7 +273,8 @@ def train(cfg: DictConfig) -> Path:
         if val_len < best_val:
             best_val = val_len
             save_checkpoint(ckpt_dir / f"{tag}.pt", policy, cfg, epoch=epoch, val_length=val_len)
-        (run_dir / "history.json").write_text(json.dumps(history, indent=1))
+        history_file, history_text = run_dir / "history.json", json.dumps(history, indent=1)
+        _retry_io(partial(history_file.write_text, history_text), "history.json")
         stop = stopper.update(val_len)
         if stop:
             log.info(

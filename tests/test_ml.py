@@ -169,6 +169,42 @@ def test_training_stops_early_and_stays_stopped_on_resume(tmp_path) -> None:  # 
     assert not (tmp_path / "run2" / "history.json").exists()
 
 
+def test_logging_failure_does_not_kill_training(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    from omegaconf import OmegaConf
+    from torch.utils.tensorboard import SummaryWriter
+
+    from neural_routing.ml.train import train
+
+    def locked(*args, **kwargs):  # type: ignore[no-untyped-def]
+        raise PermissionError("file locked by a sync client")
+
+    monkeypatch.setattr(SummaryWriter, "add_scalar", locked)
+    cfg = OmegaConf.load("configs/base.yaml")
+    cfg.num_customers = 6
+    cfg.model = {**cfg.model, **vars(SMALL)}
+    cfg.train.update(epochs=2, steps_per_epoch=2, batch_size=2, val_size=4, device="cpu")
+    cfg.train.update(log_every=1, run_dir=str(tmp_path / "run"), checkpoint_dir=str(tmp_path / "c"))
+    del cfg["hydra"]
+    assert train(cfg).exists()  # training finished despite every log write failing
+
+
+def test_checkpoint_save_retries_transient_lock(tmp_path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
+    import neural_routing.ml.train as tr
+
+    monkeypatch.setattr(tr.time, "sleep", lambda s: None)
+    calls = {"n": 0}
+
+    def flaky() -> None:
+        calls["n"] += 1
+        if calls["n"] < 3:
+            raise PermissionError("locked")
+
+    tr._retry_io(flaky, "x")
+    assert calls["n"] == 3
+    with pytest.raises(PermissionError):
+        tr._retry_io(lambda: (_ for _ in ()).throw(PermissionError("always")), "x", attempts=2)
+
+
 def test_augment8_preserves_tour_length() -> None:
     batch, env, actions = random_rollout("tsp", B=2, P=1)
     aug = augment8(batch)

@@ -105,3 +105,9 @@ Expected effect, to be measured: `cvrp50_amazon` (customers + polar) against `cv
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are
 git-ignored; on other machines they are ordinary folders.
+
+*Update 2026-10-21:* a CVRP-100 run died at epoch 56 when OneDrive locked TensorBoard's event file
+mid-write (`PermissionError`). `runs/`, `checkpoints/` and `logs/` are now junctions too, and the
+trainer no longer trusts the filesystem: TensorBoard goes through `SafeWriter` (the first error
+disables logging instead of raising) and checkpoints/history are written with retries
+(`_retry_io`). Resume made the crash cost only the unfinished epoch.

@@ -54,6 +54,30 @@ def test_savings_respects_single_vehicle() -> None:
     assert sol.num_routes == 1 and evaluate(inst, sol).is_complete
 
 
+@pytest.mark.parametrize(
+    ("cfg", "expected"),
+    [
+        ("savings", ("savings", 1.0)),
+        ("pyvrp:10", ("pyvrp", 10.0)),
+        ("attention@checkpoints/cvrp50_pomo.pt", ("attention", 1.0)),
+        ("attention_ls@runs/a_b.pt:2", ("attention_ls", 2.0)),
+    ],
+)
+def test_parse_config(cfg: str, expected: tuple[str, float]) -> None:
+    from neural_routing.eval.benchmark import parse_config
+
+    assert parse_config(cfg) == expected
+
+
+def test_amazon_like_benchmark_instance() -> None:
+    from neural_routing.eval.synthetic_benchmark import build
+
+    inst = build("cvrp", 20, seed=3, distribution="amazon")
+    assert inst.num_customers == 20 and inst.capacity == 1.0
+    m = evaluate(inst, get_solver("savings").solve(inst))
+    assert m.is_complete and m.capacity_excess == 0
+
+
 def test_unknown_solver() -> None:
     with pytest.raises(KeyError):
         get_solver("does-not-exist")

@@ -55,10 +55,21 @@ def _from_quantiles(q: list[float], shape: tuple[int, ...], g: torch.Generator |
     return table[lo] + (table[lo + 1] - table[lo]) * (pos - lo)
 
 
-def normalise(locs_km: Tensor) -> tuple[Tensor, Tensor]:
-    """Shift to the origin and scale by the largest side (aspect ratio kept). Returns (locs, km)."""
-    mins = locs_km.min(dim=1, keepdim=True).values
-    span = (locs_km.max(dim=1, keepdim=True).values - mins).amax(dim=-1).clamp(min=1e-9)
+NORMALISATIONS = ("all", "customers")
+
+
+def normalise(locs_km: Tensor, mode: str = "all") -> tuple[Tensor, Tensor]:
+    """Shift and scale (aspect ratio kept) so the reference nodes span [0, 1]. Returns (locs, km).
+
+    ``all`` uses every node, so a far depot squashes the customers into a corner. ``customers``
+    uses the customers only: they fill the square and the depot may lie outside it (distances stay
+    exact, only the unit changes); pair it with ``ModelConfig.depot_encoding="polar"``.
+    """
+    if mode not in NORMALISATIONS:
+        raise ValueError(f"unknown normalisation {mode!r}")
+    ref = locs_km if mode == "all" else locs_km[:, 1:]
+    mins = ref.min(dim=1, keepdim=True).values
+    span = (ref.max(dim=1, keepdim=True).values - mins).amax(dim=-1).clamp(min=1e-9)
     return (locs_km - mins) / span[..., None], span.squeeze(-1)
 
 
@@ -70,9 +81,10 @@ def generate_amazon_like(
     generator: torch.Generator | None = None,
     params: GeneratorParams | None = None,
     stops_per_vehicle: float | None = None,
+    normalisation: str = "all",
 ) -> tuple[Batch, TimeFeatures]:
     """``stops_per_vehicle`` rescales demands so a van fills up after that many average stops
-    (None keeps the real, almost never binding, demands)."""
+    (None keeps the real, almost never binding, demands). See :func:`normalise`."""
     p = params or load_params()
     B, N, g = batch_size, num_customers, generator
 
@@ -89,7 +101,7 @@ def generate_amazon_like(
     zone_of = (torch.rand(B, N, generator=g) * zones[:, None]).long()
     customers = centres.gather(1, zone_of[..., None].expand(B, N, 2))
     customers = customers + torch.randn(B, N, 2, generator=g) * stop_sd[:, None, None]
-    locs, span_km = normalise(torch.cat([depot[:, None], customers], dim=1))
+    locs, span_km = normalise(torch.cat([depot[:, None], customers], dim=1), normalisation)
 
     # demand as a fraction of capacity
     demand = torch.zeros(B, N + 1)
@@ -127,6 +139,7 @@ def sample_real(
     problem: str = "cvrp",
     seed: int = 0,
     travel_s_per_km: float | None = None,
+    normalisation: str = "all",
 ) -> tuple[Batch, TimeFeatures]:
     """``count`` real sub-routes of ``num_customers`` stops, normalised like generated ones.
 
@@ -169,7 +182,7 @@ def sample_real(
         start = sub["tw_start_s"].fillna(0).clip(lower=0).to_numpy()
         end = sub["tw_end_s"].fillna(np.inf).to_numpy()
         tw.append(np.vstack([[0.0, np.inf], np.column_stack([start, end])]))
-    xy_t, span_km = normalise(torch.tensor(np.stack(locs), dtype=torch.float32))
+    xy_t, span_km = normalise(torch.tensor(np.stack(locs), dtype=torch.float32), normalisation)
     seconds_per_unit = speed * span_km
     times = TimeFeatures(
         torch.tensor(np.stack(service), dtype=torch.float32) / seconds_per_unit[:, None],

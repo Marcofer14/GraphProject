@@ -10,6 +10,10 @@ num_customers: 50
 
 data:
   distribution: amazon
+  normalisation: customers   # customers fill the square; the far depot is encoded in polar form
+
+model:
+  depot_encoding: polar
 
 train:
   batch_size: 32

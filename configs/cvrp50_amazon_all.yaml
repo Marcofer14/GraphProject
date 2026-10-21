@@ -1,0 +1,15 @@
+# Ablation for ADR-012: identical to cvrp50_amazon but with the old depot-inclusive normalisation
+# and raw (x, y) depot input. Compare both with:
+#   nr-bench-synth --distribution amazon --problem cvrp --size 50 --checkpoint <each>
+defaults:
+  - cvrp50_amazon
+  - _self_
+
+data:
+  normalisation: all
+
+model:
+  depot_encoding: xy
+
+train:
+  tag: cvrp50_pomo_amazon_all

@@ -18,6 +18,7 @@ import torch
 from neural_routing.core.evaluate import evaluate
 from neural_routing.core.instance import Solution, VRPInstance
 from neural_routing.ml.env import Batch, augment8
+from neural_routing.ml.generators import normalise
 from neural_routing.ml.model import AttentionPolicy
 from neural_routing.solvers.base import Solver, register
 
@@ -25,10 +26,13 @@ DEFAULT_CHECKPOINTS = Path("checkpoints")
 
 
 @cache
-def _load(path: str, device: str) -> AttentionPolicy:
+def _load(path: str, device: str) -> tuple[AttentionPolicy, str]:
+    """The policy and the coordinate normalisation it was trained with (old checkpoints: all)."""
     from neural_routing.ml.train import load_policy
 
-    return load_policy(path, device)[0]
+    policy, ckpt = load_policy(path, device)
+    data = (ckpt.get("train_config") or {}).get("data") or {}
+    return policy, str(data.get("normalisation", "all"))
 
 
 def split_routes(actions: list[int]) -> list[list[int]]:
@@ -42,13 +46,26 @@ def split_routes(actions: list[int]) -> list[list[int]]:
     return [r for r in routes if r]
 
 
-def to_batch(instance: VRPInstance, device: str) -> Batch:
-    xy = instance.coords - instance.coords.min(0)
-    xy = xy / max(float(xy.max()), 1e-9)
+def planar_km(instance: VRPInstance) -> np.ndarray:
+    """Coordinates on a plane where both axes have the same unit.
+
+    Real instances carry (lat, lng) in degrees; a degree of longitude is cos(lat) shorter than a
+    degree of latitude, so they are projected (equirectangular) to km. Synthetic ones are planar.
+    """
+    if instance.meta.get("coord_system") != "latlng":
+        return np.asarray(instance.coords, dtype=np.float64)
+    lat, lng = instance.coords[:, 0], instance.coords[:, 1]
+    lat0 = np.radians(lat.mean())
+    return np.column_stack([lng * 111.32 * np.cos(lat0), lat * 110.574])
+
+
+def to_batch(instance: VRPInstance, device: str, normalisation: str = "all") -> Batch:
+    xy = torch.tensor(planar_km(instance)[None], dtype=torch.float32)
+    locs, _ = normalise(xy, normalisation)
     tsp = not math.isfinite(instance.capacity)
     demand = np.zeros(instance.num_nodes) if tsp else instance.demands / instance.capacity
     return Batch(
-        torch.tensor(xy[None], dtype=torch.float32, device=device),
+        locs.to(device),
         torch.tensor(demand[None], dtype=torch.float32, device=device),
         tsp,
     )
@@ -85,8 +102,8 @@ class AttentionSolver(Solver):
 
     @torch.no_grad()
     def _solve(self, instance: VRPInstance, time_limit: float) -> list[list[int]]:
-        policy = _load(self._checkpoint_for(instance), self.device)
-        batch = to_batch(instance, self.device)
+        policy, normalisation = _load(self._checkpoint_for(instance), self.device)
+        batch = to_batch(instance, self.device, normalisation)
         if self.augment:
             batch = augment8(batch)
         P = instance.num_customers if self.multistart else 1

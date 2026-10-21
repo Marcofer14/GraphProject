@@ -35,6 +35,34 @@
             "presentation": { "panel": "dedicated", "reveal": "always" }
         },
         {
+            "label": "Experiment A: train CVRP-50 Amazon (customer-centric)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "cvrp50_amazon"],
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
+            "label": "Experiment B: train CVRP-50 Amazon (old normalisation)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "cvrp50_amazon_all"],
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
+            "label": "Experiment: compare A vs B vs uniform model (Amazon-like CVRP-50)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.eval.synthetic_benchmark", "--distribution", "amazon",
+                     "--problem", "cvrp", "--size", "50", "--n", "200", "--workers", "6",
+                     "--tag", "normalisation", "--configs", "pyvrp:10", "savings",
+                     "attention@checkpoints/cvrp50_pomo_amazon.pt",
+                     "attention@checkpoints/cvrp50_pomo_amazon_all.pt",
+                     "attention@checkpoints/cvrp50_pomo.pt"],
+            "problemMatcher": []
+        },
+        {
             "label": "Bench: CVRP-50 after 100 epochs",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/Scripts/python.exe",
@@ -91,7 +119,8 @@
             "id": "config",
             "type": "pickString",
             "description": "Training config (configs/*.yaml)",
-            "options": ["tsp20", "cvrp20", "cvrp50", "cvrp100", "tsp20_rollout"],
+            "options": ["tsp20", "cvrp20", "cvrp50", "cvrp100", "tsp20_rollout", "cvrp50_amazon",
+                        "cvrp50_amazon_all"],
             "default": "cvrp50"
         },
         {

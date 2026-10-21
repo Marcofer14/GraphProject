@@ -37,8 +37,9 @@ log = logging.getLogger(__name__)
 
 
 def parse_config(cfg: str) -> tuple[str, float]:
-    name, _, limit = cfg.partition(":")
-    return name, float(limit) if limit else 1.0
+    """``solver[@checkpoint][:time_limit]`` -> (solver, time_limit)."""
+    head, _, limit = cfg.rpartition(":") if ":" in cfg.split("@")[-1] else (cfg, "", "")
+    return head.split("@", 1)[0], float(limit) if limit else 1.0
 
 
 def run_instance(
@@ -60,7 +61,8 @@ def run_instance(
             "station": instance.meta.get("station"),
         }
         try:
-            solver = get_solver(name, **(solver_kwargs or {}).get(name, {}))
+            kw = solver_kwargs or {}
+            solver = get_solver(name, **kw.get(cfg, kw.get(name, {})))
             sol = solver.solve(instance, time_limit=limit)
             row |= evaluate(instance, sol).as_dict()
         except Exception as exc:  # a failing solver must not kill a long benchmark

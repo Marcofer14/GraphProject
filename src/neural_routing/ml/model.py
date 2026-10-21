@@ -26,6 +26,10 @@ class ModelConfig:
     ff_dim: int = 512
     norm: str = "batch"  # "batch" (AM) | "instance" (POMO) | "layer"
     tanh_clip: float = 10.0
+    # "xy": raw depot coordinates (depot inside the square). "polar": direction + log-distance
+    # from the customer centroid, bounded even when customer-centric normalisation puts the
+    # depot far outside the square
+    depot_encoding: str = "xy"
 
 
 class Norm(nn.Module):
@@ -73,7 +77,9 @@ class AttentionPolicy(nn.Module):
         super().__init__()
         self.cfg = cfg = cfg or ModelConfig()
         D = cfg.embed_dim
-        self.embed_depot = nn.Linear(2, D)
+        if cfg.depot_encoding not in ("xy", "polar"):
+            raise ValueError(f"unknown depot_encoding {cfg.depot_encoding!r}")
+        self.embed_depot = nn.Linear(2 if cfg.depot_encoding == "xy" else 3, D)
         self.embed_node = nn.Linear(3, D)  # x, y, demand
         self.layers = nn.ModuleList(EncoderLayer(cfg) for _ in range(cfg.num_layers))
         self.project_nodes = nn.Linear(D, 3 * D, bias=False)  # glimpse K, V and logit K
@@ -81,8 +87,17 @@ class AttentionPolicy(nn.Module):
         self.project_step = nn.Linear(2 * D + 1, D, bias=False)  # current, first, capacity left
         self.project_out = nn.Linear(D, D, bias=False)
 
+    def depot_features(self, batch: Batch) -> Tensor:
+        """(B, 1, 2|3) input features of the depot."""
+        if self.cfg.depot_encoding == "xy":
+            return batch.locs[:, :1]
+        offset = batch.locs[:, :1] - batch.locs[:, 1:].mean(dim=1, keepdim=True)
+        dist = offset.norm(dim=-1, keepdim=True)
+        direction = offset / dist.clamp(min=1e-9)
+        return torch.cat([direction, torch.log1p(dist)], dim=-1)
+
     def encode(self, batch: Batch) -> Tensor:
-        depot = self.embed_depot(batch.locs[:, :1])
+        depot = self.embed_depot(self.depot_features(batch))
         nodes = self.embed_node(torch.cat([batch.locs[:, 1:], batch.demand[:, 1:, None]], -1))
         h = torch.cat([depot, nodes], dim=1)
         for layer in self.layers:

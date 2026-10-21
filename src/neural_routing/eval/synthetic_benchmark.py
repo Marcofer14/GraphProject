@@ -19,20 +19,25 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 from pathlib import Path
 from typing import Any
 
+import numpy as np
 import pandas as pd
+import torch
 from tqdm import tqdm
 
 from neural_routing.core import VRPInstance
 from neural_routing.data.synthetic import random_instance
 from neural_routing.eval.benchmark import add_gaps, parse_config, run_instance, summarize
 from neural_routing.ml.env import default_capacity
+from neural_routing.ml.generators import generate_amazon_like
 from neural_routing.solvers import get_solver
 
 NEURAL = {"attention", "attention_greedy", "attention_ls"}
 DEFAULT_CONFIGS = ["nearest_neighbor", "savings", "ortools:1", "pyvrp:2", "attention"]
 
 
-def build(problem: str, size: int, seed: int) -> VRPInstance:
+def build(problem: str, size: int, seed: int, distribution: str = "uniform") -> VRPInstance:
+    if distribution == "amazon":
+        return build_amazon_like(problem, size, seed)
     cap = math.inf if problem == "tsp" else default_capacity(size)
     inst = random_instance(size, seed=seed, capacity=cap, service_time=0.0)
     return VRPInstance(
@@ -41,8 +46,34 @@ def build(problem: str, size: int, seed: int) -> VRPInstance:
     )  # fmt: skip
 
 
-def _job(problem: str, size: int, seed: int, configs: list[str]) -> list[dict[str, Any]]:
-    return run_instance(build(problem, size, seed), configs)
+def build_amazon_like(problem: str, size: int, seed: int) -> VRPInstance:
+    """One calibrated instance (``ml.generators``) as a planar Euclidean VRPInstance.
+
+    Coordinates use the depot-inclusive scaling, but any rescaling would do: every solver either
+    works on the matrix or (neural) renormalises the coordinates the way its checkpoint expects,
+    and gaps are relative. Time windows are left out until the solvers handle them.
+    """
+    batch, _ = generate_amazon_like(1, size, problem, generator=torch.Generator().manual_seed(seed))
+    xy = batch.locs[0].double().numpy() * 1000  # ~integer resolution for OR-Tools/PyVRP
+    n1 = size + 1
+    demand = batch.demand[0].double().numpy()
+    cap = math.inf if problem == "tsp" else 1.0
+    return VRPInstance(
+        name=f"amazon_{problem}{size}_{seed}",
+        coords=xy,
+        durations=np.linalg.norm(xy[:, None] - xy[None], axis=-1),
+        demands=demand,
+        service_times=np.zeros(n1),
+        time_windows=np.tile([0.0, np.inf], (n1, 1)),
+        capacity=cap,
+        num_vehicles=1 if problem == "tsp" else max(1, math.ceil(demand.sum())),
+    )
+
+
+def _job(
+    problem: str, size: int, seed: int, configs: list[str], distribution: str = "uniform"
+) -> list[dict[str, Any]]:
+    return run_instance(build(problem, size, seed, distribution), configs)
 
 
 def main() -> None:
@@ -50,6 +81,7 @@ def main() -> None:
         description=__doc__, formatter_class=argparse.RawTextHelpFormatter
     )
     parser.add_argument("--problem", choices=["tsp", "cvrp"], default="tsp")
+    parser.add_argument("--distribution", choices=["uniform", "amazon"], default="uniform")
     parser.add_argument("--size", type=int, default=20)
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--configs", nargs="+", default=DEFAULT_CONFIGS)
@@ -67,33 +99,39 @@ def main() -> None:
 
     classic = [c for c in args.configs if parse_config(c)[0] not in NEURAL]
     neural = [c for c in args.configs if parse_config(c)[0] in NEURAL]
-    kwargs = {name: {"checkpoint": args.checkpoint} for name in NEURAL} if args.checkpoint else {}
+    # per-config kwargs: "attention@path/to.pt" pins a checkpoint, else --checkpoint applies
+    kwargs: dict[str, dict[str, Any]] = {}
+    for cfg in neural:
+        ckpt = cfg.split("@", 1)[1].split(":")[0] if "@" in cfg else args.checkpoint
+        if ckpt:
+            kwargs[cfg] = {"checkpoint": ckpt}
+    dist = args.distribution
     seeds = range(args.seed, args.seed + args.n)
     rows: list[dict[str, Any]] = []
 
-    if neural:  # warm up CUDA and load the checkpoint outside the timed region
-        warm = build(args.problem, args.size, 0)
+    if neural:  # warm up CUDA and load the checkpoints outside the timed region
+        warm = build(args.problem, args.size, 0, dist)
         for cfg in neural:
-            name = parse_config(cfg)[0]
-            get_solver(name, **kwargs.get(name, {})).solve(warm)
+            get_solver(parse_config(cfg)[0], **kwargs.get(cfg, {})).solve(warm)
         for s in tqdm(seeds, desc="neural"):
-            rows += run_instance(build(args.problem, args.size, s), neural, kwargs)
+            rows += run_instance(build(args.problem, args.size, s, dist), neural, kwargs)
 
     if classic:
         with ProcessPoolExecutor(args.workers) as pool:
-            futures = [pool.submit(_job, args.problem, args.size, s, classic) for s in seeds]
+            futures = [pool.submit(_job, args.problem, args.size, s, classic, dist) for s in seeds]
             for f in tqdm(as_completed(futures), total=len(futures), desc="classic"):
                 rows += f.result()
 
     df = add_gaps(pd.DataFrame(rows))
     summary = summarize(df).drop(columns=["late_stops_%"])
-    tag = f"synthetic_{args.problem}{args.size}{'_' + args.tag if args.tag else ''}"
+    prefix = "synthetic" if dist == "uniform" else f"synthetic_{dist}"
+    tag = f"{prefix}_{args.problem}{args.size}{'_' + args.tag if args.tag else ''}"
     (args.out / "raw").mkdir(parents=True, exist_ok=True)
     df.to_parquet(args.out / "raw" / f"{tag}.parquet", index=False)
     md = args.out / f"{tag}.md"
     md.write_text(
         f"# Synthetic benchmark · {args.problem.upper()}-{args.size} · {args.n} instances\n\n"
-        "Uniform instances, seeds not seen in training. "
+        f"{dist.capitalize()} instances, seeds not seen in training. "
         "Gap vs best solution found per instance.\n\n"
         + summary.to_markdown() + "\n",
         encoding="utf-8",

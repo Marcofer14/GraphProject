@@ -84,6 +84,23 @@ Two findings shape what comes next:
   normalisation should be customer-centric (scale by the customers' bounding box, encode the
   depot by direction and distance). Open item for phase 3.
 
+## ADR-012 · Customer-centric normalisation with a polar depot (2026-10-21)
+Resolves the open item of ADR-011. `data.normalisation: customers` scales coordinates by the
+customers' bounding box, so they fill the unit square and the depot may lie far outside it (e.g.
+at x = 10). It is a pure rescaling: distances keep their ratios, so tours, the environment and the
+x8 augmentation are unaffected. Because raw depot coordinates can then be large, `model.
+depot_encoding: polar` feeds the depot as (cos, sin, log(1 + distance)) from the customer centroid,
+which stays bounded for any distance. Both settings are stored in the checkpoint; the neural solver
+reads them back, and checkpoints without them keep the old behaviour (`all`, `xy`).
+
+At inference, real instances carry (lat, lng): they are now projected to km (equirectangular)
+before normalising, since a degree of longitude is ~33 % shorter than a degree of latitude at
+Seattle's latitude and the old code treated them as equal.
+
+Expected effect, to be measured: `cvrp50_amazon` (customers + polar) against `cvrp50_amazon_all`
+(old normalisation) and the uniform-trained model on Amazon-like instances
+(`nr-bench-synth --distribution amazon`, VS Code task "Experiment: compare ...").
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

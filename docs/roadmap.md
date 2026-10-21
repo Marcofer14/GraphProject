@@ -35,7 +35,7 @@ flowchart LR
 | CVRP-100 | nothing | warm start for the curriculum | Colab T4 (`configs/cvrp100.yaml`) |
 | Local search ✅ (CVRP-50 gap 1.84 % → 0.62 %) | nothing | +quality for every neural model | CPU |
 | Calibrated generator ✅ (matches real slices, notebook 02) | nothing | realistic training data | CPU |
-| **Customer-centric normalisation** (new, ADR-011) | generator | training on the real distribution | CPU |
+| Customer-centric normalisation ✅ code (ADR-012) · ⏳ experiment | GPU free after CVRP-100 | training on the real distribution | GPU, ~2 h ×2 |
 | Time windows (env + model) | nothing | CVRPTW training | CPU, then GPU tests |
 | CVRPTW-50 | generator + time windows | curriculum with windows | GPU |
 | Size curriculum | CVRP-100 + CVRPTW-50 | real-size model | GPU, overnight |

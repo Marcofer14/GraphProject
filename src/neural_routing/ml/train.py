@@ -117,7 +117,10 @@ def make_sampler(
     if distribution == "amazon":
         params = load_params(data.get("generator_params", "configs/generator/amazon.json"))
         spv = data.get("stops_per_vehicle")
-        return lambda size, gen: generate_amazon_like(size, n, problem, device, gen, params, spv)[0]
+        norm = data.get("normalisation", "all")
+        return lambda size, gen: generate_amazon_like(
+            size, n, problem, device, gen, params, spv, norm
+        )[0]
     raise ValueError(f"unknown data.distribution {distribution!r}")
 
 
@@ -150,9 +153,10 @@ def train(cfg: DictConfig) -> Path:
     run_dir = Path(t_cfg.run_dir)
     ckpt_dir = Path(t_cfg.checkpoint_dir)
     distribution = (cfg.get("data") or {}).get("distribution", "uniform")
-    tag = f"{problem}{n}_{t_cfg.baseline}" + (
+    default_tag = f"{problem}{n}_{t_cfg.baseline}" + (
         "" if distribution == "uniform" else f"_{distribution}"
     )
+    tag = t_cfg.get("tag") or default_tag  # explicit names keep ablation runs apart
     writer = SummaryWriter(str(run_dir))
     history: list[dict[str, float]] = []
     best_val, step, start_epoch, t0 = float("inf"), 0, 0, time.perf_counter()

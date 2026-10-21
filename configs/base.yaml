@@ -6,6 +6,7 @@ data:
   distribution: uniform   # uniform (Kool et al.) | amazon (calibrated, configs/generator/amazon.json)
   generator_params: configs/generator/amazon.json
   stops_per_vehicle: null # amazon only: rescale demands so a van holds ~this many stops
+  normalisation: all      # all | customers (scale by the customers' box; use model.depot_encoding=polar)
 
 model:
   embed_dim: 128
@@ -14,6 +15,7 @@ model:
   ff_dim: 512
   norm: instance
   tanh_clip: 10.0
+  depot_encoding: xy      # xy | polar (direction + log-distance from the customer centroid)
 
 train:
   baseline: pomo          # pomo | rollout
@@ -34,6 +36,7 @@ train:
     min_rel_delta: 0.001  # 0.1 % relative to the best validation length so far
   run_dir: runs/${problem}${num_customers}_${train.baseline}/${now:%Y%m%d-%H%M%S}
   checkpoint_dir: checkpoints
+  tag: null               # checkpoint name; default <problem><n>_<baseline>[_<distribution>]
 
 hydra:
   run:

@@ -99,6 +99,7 @@ class AmazonDataset:
             node_ids=tuple(s["stop_id"]),
             reference_routes=reference,
             meta={
+                "coord_system": "latlng",
                 "station": r["station_code"],
                 "date": r["date"],
                 "route_score": r["route_score"],
@@ -164,5 +165,10 @@ class AmazonDataset:
             num_vehicles=len(parts),
             node_ids=tuple(node_ids),
             reference_routes=reference if len(reference) == len(parts) else None,
-            meta={"station": station, "date": date, "route_ids": tuple(rids)},
+            meta={
+                "coord_system": "latlng",
+                "station": station,
+                "date": date,
+                "route_ids": tuple(rids),
+            },
         )

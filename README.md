@@ -109,7 +109,10 @@ uv run nr-etl --split all
 uv run nr-bench --mode route --n 200 --configs reference nearest_neighbor savings ortools:1 ortools:10 pyvrp:1 pyvrp:10
 uv run nr-bench --mode station-day --n 5 --max-stops 1500 --configs reference savings ortools:60 pyvrp:60
 
-# 5. train the neural solvers (Hydra configs in configs/; resumes automatically)
+# 5a. use the published models...
+uv run python scripts/download_models.py
+
+# 5b. ...or train them (Hydra configs in configs/; resumes automatically)
 uv run nr-train --config-name tsp20
 uv run nr-train --config-name cvrp50 train.epochs=60
 tensorboard --logdir runs
@@ -120,6 +123,9 @@ uv run nr-bench-synth --problem cvrp --size 20 --configs savings ortools:1 pyvrp
 # tests, lint, types
 uv run pytest && uv run ruff check . && uv run mypy
 ```
+
+**No local GPU?** Train any config on a free Colab T4 (checkpoints on Google Drive, auto-resume):
+[![Open In Colab](https://colab.research.google.com/assets/colab-badge.svg)](https://colab.research.google.com/github/Marcofer14/GraphProject/blob/main/notebooks/colab_train.ipynb)
 
 Long jobs (training + benchmarks) can run as detached chains that survive closing the terminal,
 logging to `logs/chain_<X>.log`; see [`scripts/jobs.ps1`](scripts/jobs.ps1):

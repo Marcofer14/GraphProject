@@ -5,6 +5,11 @@ benchmarked against OR-Tools, PyVRP and **real delivery drivers** on ~9,000 Amaz
 
 **[Live demo](https://marcofer14.github.io/GraphProject/)**
 
+[![A real Chicago route replayed: the driver's plan against our model's, same stops, 10.4 % less driving](docs/media/demo.gif)](https://marcofer14.github.io/GraphProject/)
+
+*A typical route from the demo (its saving is the closest to the 200-route average), replayed:
+the real driver's plan against our model's. Made by `scripts/make_media.py` from the demo data.*
+
 > **The case.** *Ruta Norte Logistics* (fictional) runs last-mile delivery vans out of several
 > stations. Its historical operations are the public
 > [Amazon Last Mile Routing Research Challenge](https://registry.opendata.aws/amazon-last-mile-challenges/)

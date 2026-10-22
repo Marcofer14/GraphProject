@@ -175,6 +175,28 @@ of the real-road quality comes from local search on the true matrix: the policy'
 of an asymmetric street network is the main limitation, and the reason phase 4 starts with a
 matrix-aware encoder. The 100-stop model is the phase-3 reference model.
 
+## ADR-017 · Matrix-aware attention and training on real route slices (2026-10-22)
+Why the network alone reaches 38 % on real routes (vs 3.6 % on synthetic): on 100 evaluation
+routes, straight-line and real travel times correlate well overall (0.89) but only **67 % of each
+stop's 5 nearest neighbours agree**, and the shortest legs take **2.2x** what straight-line
+distance predicts (a ~92 s fixed cost per leg: turning, parking, one-way streets). On real slices
+the median leg costs 2.6x its straight-line length. Choosing "the next stop" from coordinates is
+wrong about a third of the time.
+
+Changes:
+* `Batch.dist` (optional real travel times, normalised like the coordinates); the environment
+  charges `dist[i, j]` per leg; tested against `core.evaluate` on asymmetric matrices.
+* `model.matrix_bias`: small MLPs on (log d_ij, log d_ji) give a per-head additive bias to every
+  encoder attention and to the decoder glimpse (row of the current node), plus a bias on the
+  next-node logits. Their last layers are **zero-initialised**: a fresh matrix model produces
+  exactly the same tours as the coordinate model it is loaded from (tested), so `init_from` can
+  warm-start from the phase-3 reference model and training only learns what the matrix adds.
+* `ml/real_data.RealRouteSampler`: coherent slices of real training routes with their real
+  sub-matrices (and optionally windows), 87 ms per 32 x 100 batch; routes are split 90/10 by a
+  stable hash into training / validation, the evaluation split stays untouched.
+* Inference passes the instance's matrix in the training unit (calibrated speed x box size).
+* Config `cvrp100_real_matrix` (from `cvrp100_pomo_amazon`, lr 5e-5, 500 validation slices).
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

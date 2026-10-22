@@ -18,7 +18,7 @@ import torch
 from neural_routing.core.evaluate import evaluate
 from neural_routing.core.instance import Solution, VRPInstance
 from neural_routing.ml.env import Batch, augment8
-from neural_routing.ml.generators import normalise
+from neural_routing.ml.generators import load_params, normalise
 from neural_routing.ml.model import AttentionPolicy
 from neural_routing.solvers.base import Solver, register
 
@@ -72,23 +72,38 @@ def seconds_per_unit(instance: VRPInstance, locs: np.ndarray) -> float:
 
 
 def to_batch(
-    instance: VRPInstance, device: str, normalisation: str = "all", with_time: bool = False
+    instance: VRPInstance,
+    device: str,
+    normalisation: str = "all",
+    with_time: bool = False,
+    with_matrix: bool = False,
 ) -> Batch:
     xy = torch.tensor(planar_km(instance)[None], dtype=torch.float32)
-    locs, _ = normalise(xy, normalisation)
+    locs, span = normalise(xy, normalisation)
     tsp = not math.isfinite(instance.capacity)
     demand = np.zeros(instance.num_nodes) if tsp else instance.demands / instance.capacity
-    service = tw = None
-    if with_time:
-        s = seconds_per_unit(instance, locs[0].double().numpy())
-        service = torch.tensor(instance.service_times[None] / s, dtype=torch.float32, device=device)
-        tw = torch.tensor(instance.time_windows[None] / s, dtype=torch.float32, device=device)
+    service = tw = dist = None
+    if with_time or with_matrix:
+        if instance.meta.get("coord_system") == "latlng":
+            # same unit as training on real slices: calibrated speed x box size in km
+            s = load_params().travel_s_per_km * float(span[0])
+        else:
+            s = seconds_per_unit(instance, locs[0].double().numpy())
+
+        def as_tensor(a: np.ndarray) -> torch.Tensor:
+            return torch.tensor(a[None] / s, dtype=torch.float32, device=device)
+
+        if with_time:
+            service, tw = as_tensor(instance.service_times), as_tensor(instance.time_windows)
+        if with_matrix:
+            dist = as_tensor(instance.durations)
     return Batch(
         locs.to(device),
         torch.tensor(demand[None], dtype=torch.float32, device=device),
         tsp,
         service,
         tw,
+        dist,
     )
 
 
@@ -131,7 +146,10 @@ class AttentionSolver(Solver):
     def _solve(self, instance: VRPInstance, time_limit: float) -> list[list[int]]:
         policy, normalisation = _load(self._checkpoint_for(instance), self.device)
         timed = policy.cfg.time_features and instance.has_time_windows
-        batch = to_batch(instance, self.device, normalisation, with_time=timed)
+        batch = to_batch(
+            instance, self.device, normalisation, with_time=timed,
+            with_matrix=policy.cfg.matrix_bias,
+        )  # fmt: skip
         if self.augment:
             batch = augment8(batch)
         P = instance.num_customers if self.multistart else 1

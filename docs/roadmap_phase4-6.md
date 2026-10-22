@@ -26,6 +26,9 @@ flowchart LR
     B4 --> F4
 ```
 
+**Status 2026-10-22:** 5.1 API ✅ · 4.1–4.2 matrix-aware model + real-slice data ✅ (ADR-017) ·
+4.3 training ready (`cvrp100_real_matrix`, VS Code task) · demo moved to the end of the plan.
+
 | Step | Needs | Delivers |
 |---|---|---|
 | 4.1 Matrix-aware encoder | — | policy that sees asymmetric travel times |

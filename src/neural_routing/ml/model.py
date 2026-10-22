@@ -32,6 +32,9 @@ class ModelConfig:
     depot_encoding: str = "xy"
     # node windows/service + current time as inputs (CVRPTW). Off keeps old checkpoints loadable
     time_features: bool = False
+    # learned attention biases from the travel-time matrix (ADR-017). Zero-initialised: a fresh
+    # model with it on behaves exactly like one without, so it can warm-start from an old model
+    matrix_bias: bool = False
 
 
 TIME_CAP = 1e3  # "no window" end, in normalised time units, before log scaling
@@ -69,12 +72,27 @@ class EncoderLayer(nn.Module):
         )
         self.norm1, self.norm2 = Norm(cfg.embed_dim, cfg.norm), Norm(cfg.embed_dim, cfg.norm)
 
-    def forward(self, h: Tensor) -> Tensor:
+    def forward(self, h: Tensor, bias: Tensor | None = None) -> Tensor:
+        """``bias``: optional additive attention bias (B, H, N, N)."""
         B, N, D = h.shape
         q, k, v = self.qkv(h).view(B, N, 3, self.heads, D // self.heads).permute(2, 0, 3, 1, 4)
-        att = F.scaled_dot_product_attention(q, k, v).transpose(1, 2).reshape(B, N, D)
+        att = F.scaled_dot_product_attention(q, k, v, attn_mask=bias)
+        att = att.transpose(1, 2).reshape(B, N, D)
         h = self.norm1(h + self.out(att))
         return self.norm2(h + self.ff(h))  # type: ignore[no-any-return]
+
+
+def _pair_mlp(out_dim: int, hidden: int = 16) -> nn.Sequential:
+    """(log1p d_ij, log1p d_ji) -> out_dim, last layer zero-initialised (starts as a no-op)."""
+    last = nn.Linear(hidden, out_dim)
+    nn.init.zeros_(last.weight)
+    nn.init.zeros_(last.bias)
+    return nn.Sequential(nn.Linear(2, hidden), nn.ReLU(), last)
+
+
+def pair_features(dist: Tensor) -> Tensor:
+    """(B, N, N) travel times -> (B, N, N, 2) features of both directions, log-scaled."""
+    return torch.stack([torch.log1p(dist), torch.log1p(dist.transpose(1, 2))], dim=-1)
 
 
 class AttentionPolicy(nn.Module):
@@ -93,6 +111,15 @@ class AttentionPolicy(nn.Module):
         # current node, first node, capacity left [+ current time]
         self.project_step = nn.Linear(2 * D + (2 if cfg.time_features else 1), D, bias=False)
         self.project_out = nn.Linear(D, D, bias=False)
+        if cfg.matrix_bias:
+            self.edge_bias = _pair_mlp(cfg.num_heads)  # encoder + glimpse attention, per head
+            self.step_bias = _pair_mlp(1)  # next-node logits, from the current node
+
+    def travel_times(self, batch: Batch) -> Tensor:
+        """The real matrix if the batch has one, else straight-line distances."""
+        if batch.dist is not None:
+            return batch.dist
+        return torch.cdist(batch.locs, batch.locs)
 
     def node_features(self, batch: Batch) -> Tensor:
         """(B, N, 3|7) customer inputs. Times are log-scaled: windows (hundreds of units) dwarf
@@ -121,13 +148,21 @@ class AttentionPolicy(nn.Module):
         direction = offset / dist.clamp(min=1e-9)
         return torch.cat([direction, torch.log1p(dist)], dim=-1)
 
-    def encode(self, batch: Batch) -> Tensor:
+    def encode(self, batch: Batch, edge_bias: Tensor | None = None) -> Tensor:
         depot = self.embed_depot(self.depot_features(batch))
         nodes = self.embed_node(self.node_features(batch))
         h = torch.cat([depot, nodes], dim=1)
         for layer in self.layers:
-            h = layer(h)
+            h = layer(h, edge_bias)
         return h
+
+    def matrix_biases(self, batch: Batch) -> tuple[Tensor, Tensor] | tuple[None, None]:
+        """(edge (B, H, N+1, N+1), step (B, N+1, N+1)) biases from travel times, or (None, None)."""
+        if not self.cfg.matrix_bias:
+            return None, None
+        feats = pair_features(self.travel_times(batch))
+        edge = self.edge_bias(feats).permute(0, 3, 1, 2).contiguous()
+        return edge, self.step_bias(feats).squeeze(-1)
 
     def forward(
         self,
@@ -147,7 +182,8 @@ class AttentionPolicy(nn.Module):
         cfg = self.cfg
         B, n1, D, H = batch.size, batch.num_customers + 1, cfg.embed_dim, cfg.num_heads
         P = num_starts
-        h = self.encode(batch)
+        edge_bias, step_bias = self.matrix_biases(batch)
+        h = self.encode(batch, edge_bias)
         gk, gv, lk = self.project_nodes(h).chunk(3, dim=-1)
         gk = gk.view(B, n1, H, D // H).transpose(1, 2)  # (B, H, N+1, dk)
         gv = gv.view(B, n1, H, D // H).transpose(1, 2)
@@ -174,9 +210,16 @@ class AttentionPolicy(nn.Module):
                 context.append(torch.log1p(env.time).unsqueeze(-1))
             q = graph + self.project_step(torch.cat(context, -1))  # (B, P, D)
             qh = q.view(B, P, H, D // H).transpose(1, 2)  # (B, H, P, dk)
-            glimpse = F.scaled_dot_product_attention(qh, gk, gv, attn_mask=~mask[:, None])
+            if edge_bias is None or step_bias is None:
+                attn: Tensor = ~mask[:, None]
+            else:  # each trajectory's row of the edge bias: from its current node to every node
+                rows = edge_bias.gather(2, env.cur[:, None, :, None].expand(B, H, P, n1))
+                attn = rows.masked_fill(mask[:, None], float("-inf"))
+            glimpse = F.scaled_dot_product_attention(qh, gk, gv, attn_mask=attn)
             g = self.project_out(glimpse.transpose(1, 2).reshape(B, P, D))
             logits = torch.einsum("bpd,bnd->bpn", g, lk) / math.sqrt(D)
+            if step_bias is not None:
+                logits = logits + step_bias.gather(1, env.cur[..., None].expand(B, P, n1))
             logits = cfg.tanh_clip * torch.tanh(logits)
             logits = logits.masked_fill(mask, float("-inf"))
             logp = torch.log_softmax(logits, dim=-1)

@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import contextlib
 import copy
+import dataclasses
 import json
 import logging
 import time
@@ -26,6 +27,7 @@ from pathlib import Path
 from typing import Any
 
 import hydra
+import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf
 from torch.utils.tensorboard import SummaryWriter
@@ -129,6 +131,10 @@ def unavoidable_cost(batch: Batch) -> float:
     most of the tour length and does not depend on the policy; a *relative* stopping threshold on
     the raw length would then demand a much larger relative gain on the part the policy controls.
     """
+    if batch.dist is not None:  # real matrix: cheapest way out plus cheapest way back
+        out = batch.dist[:, 0, 1:].min(dim=1).values
+        back = batch.dist[:, 1:, 0].min(dim=1).values
+        return float((out + back).mean())
     gap = (batch.locs[:, 1:] - batch.locs[:, :1]).norm(dim=-1)
     return float(2 * gap.min(dim=1).values.mean())
 
@@ -176,8 +182,8 @@ def make_sampler(
     data = cfg.get("data") or {}
     distribution = data.get("distribution", "uniform")
     n, problem = cfg.num_customers, cfg.problem
-    if data.get("time_windows") and distribution != "amazon":
-        raise ValueError("data.time_windows needs data.distribution=amazon")
+    if data.get("time_windows") and distribution == "uniform":
+        raise ValueError("data.time_windows needs data.distribution=amazon or real")
     if distribution == "uniform":
         return lambda size, gen: generate(size, n, problem, device, gen)
     if distribution == "amazon":
@@ -194,6 +200,24 @@ def make_sampler(
             return with_times(batch, times) if timed else batch
 
         return amazon
+    if distribution == "real":
+        # real route slices with their real travel-time matrices (ADR-017). Training draws from
+        # the training routes; validation (a generator is passed) from held-out routes.
+        from neural_routing.data.amazon import AmazonDataset
+        from neural_routing.ml.real_data import RealRouteSampler
+
+        ds = AmazonDataset(data.get("real_split", "training"))
+        train_set = RealRouteSampler(ds, "train", min_stops=n)
+        val_set = RealRouteSampler(ds, "val", min_stops=n)
+        norm = data.get("normalisation", "customers")
+        timed = bool(data.get("time_windows", False))
+
+        def real(size: int, gen: torch.Generator | None) -> Batch:
+            subset = train_set if gen is None else val_set
+            rng = np.random.default_rng(None if gen is None else int(gen.initial_seed()))
+            return subset.sample(size, n, problem, norm, rng, with_time=timed).to(device)
+
+        return real
     raise ValueError(f"unknown data.distribution {distribution!r}")
 
 
@@ -255,12 +279,18 @@ def train(cfg: DictConfig) -> Path:
         # size-agnostic). Resuming this stage later takes precedence over init_from.
         init = torch.load(t_cfg.init_from, map_location=device, weights_only=False)
         # compare with defaults filled in: older checkpoints predate newer (default) options
-        if ModelConfig(**init["model_config"]) != policy.cfg:
+        source = ModelConfig(**init["model_config"])
+        # a coordinate model can seed a matrix model: the new bias modules start as a no-op
+        adds_matrix = policy.cfg.matrix_bias and not source.matrix_bias
+        if dataclasses.replace(source, matrix_bias=policy.cfg.matrix_bias) != policy.cfg:
             raise ValueError(
                 f"init_from {t_cfg.init_from}: model config {init['model_config']} "
                 f"differs from {vars(policy.cfg)}"
             )
-        policy.load_state_dict(init["state_dict"])
+        missing, unexpected = policy.load_state_dict(init["state_dict"], strict=not adds_matrix)
+        new_modules = ("edge_bias", "step_bias")
+        if unexpected or any(not k.startswith(new_modules) for k in missing):
+            raise ValueError(f"init_from: unexpected {unexpected}, missing {missing}")
         if baseline_policy is not None:
             baseline_policy.load_state_dict(policy.state_dict())
             baseline_val = (

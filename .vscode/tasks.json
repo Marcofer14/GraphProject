@@ -20,6 +20,28 @@
             "presentation": { "panel": "dedicated", "reveal": "always" }
         },
         {
+            "label": "Phase 4: train on REAL routes + matrices (~3-4 h)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "cvrp100_real_matrix"],
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
+            "label": "Phase 4: evaluate on 200 real routes (vs phase 3)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.eval.benchmark", "--mode", "route", "--split",
+                     "evaluation", "--n", "200", "--workers", "6", "--tag", "phase4", "--configs",
+                     "reference", "ortools:10", "pyvrp:10",
+                     "attention_ls@checkpoints/cvrp100_pomo_real.pt",
+                     "attention@checkpoints/cvrp100_pomo_real.pt",
+                     "attention_ls@checkpoints/cvrp100_pomo_amazon_ft.pt",
+                     "attention_ls@checkpoints/cvrp100_pomo_amazon.pt",
+                     "attention@checkpoints/cvrp100_pomo_amazon.pt"],
+            "problemMatcher": []
+        },
+        {
             "label": "Phase 4: fine-tune CVRP-100 Amazon (~2 h)",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/Scripts/python.exe",

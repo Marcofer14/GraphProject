@@ -1,0 +1,23 @@
+# Phase 4 (ADR-017): fine-tune the phase-3 reference model on REAL route slices with their REAL
+# travel-time matrices, adding the matrix-aware attention biases (zero-initialised, so training
+# starts exactly at the reference model's behaviour). Validation slices come from held-out
+# training routes; the evaluation split is reserved for the final benchmark.
+defaults:
+  - cvrp100_amazon
+  - _self_
+
+data:
+  distribution: real
+  real_split: training
+
+model:
+  matrix_bias: true
+
+train:
+  tag: cvrp100_pomo_real
+  init_from: checkpoints/cvrp100_pomo_amazon.pt
+  lr: 5.0e-5
+  val_size: 500
+  epochs: 40
+  early_stopping:
+    patience: 10

@@ -34,6 +34,9 @@ class Batch:
     # optional time windows, in normalised time units (driving 1 distance unit takes 1 unit)
     service: Tensor | None = None  # (B, N+1); depot 0
     tw: Tensor | None = None  # (B, N+1, 2) [earliest, latest]; no window = [0, inf]
+    # optional real travel times (B, N+1, N+1), same unit as the coordinates; when present the
+    # environment charges dist[i, j] for a leg instead of the straight-line distance
+    dist: Tensor | None = None
 
     @property
     def size(self) -> int:
@@ -48,11 +51,17 @@ class Batch:
         return self.tw is not None
 
     def _map(self, fn: Callable[[Tensor], Tensor]) -> Batch:
+        def opt(t: Tensor | None) -> Tensor | None:
+            return None if t is None else fn(t)
+
         return Batch(
-            fn(self.locs), fn(self.demand), self.tsp,
-            None if self.service is None else fn(self.service),
-            None if self.tw is None else fn(self.tw),
-        )  # fmt: skip
+            fn(self.locs),
+            fn(self.demand),
+            self.tsp,
+            opt(self.service),
+            opt(self.tw),
+            opt(self.dist),
+        )
 
     def to(self, device: torch.device | str) -> Batch:
         return self._map(lambda t: t.to(device))
@@ -92,7 +101,11 @@ def augment8(batch: Batch) -> Batch:
         return None if t is None else t.repeat(8, *([1] * (t.dim() - 1)))
 
     # times are invariant under the symmetries: just repeat them with the demands
-    return Batch(locs, batch.demand.repeat(8, 1), batch.tsp, rep(batch.service), rep(batch.tw))
+    # times and the travel-time matrix are invariant too (an isometry keeps every leg's cost)
+    return Batch(
+        locs, batch.demand.repeat(8, 1), batch.tsp, rep(batch.service), rep(batch.tw),
+        rep(batch.dist),
+    )  # fmt: skip
 
 
 class RoutingEnv:
@@ -116,7 +129,11 @@ class RoutingEnv:
 
     def step(self, action: Tensor) -> None:
         """action: (B, P) node indices. Finished trajectories must pick the depot (cost 0)."""
-        leg = (self._gather_locs(action) - self._gather_locs(self.cur)).norm(dim=-1)
+        if self.batch.dist is not None:
+            bidx = torch.arange(self.batch.size, device=action.device)[:, None]
+            leg = self.batch.dist[bidx, self.cur, action]
+        else:
+            leg = (self._gather_locs(action) - self._gather_locs(self.cur)).norm(dim=-1)
         self.length += leg
         if self.batch.tw is not None and self.batch.service is not None:
             tw = self.batch.tw.gather(1, action.unsqueeze(-1).expand(*action.shape, 2))

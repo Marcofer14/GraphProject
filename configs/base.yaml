@@ -34,6 +34,7 @@ train:
   early_stopping:         # stop after `patience` epochs without a >= min_rel_delta improvement
     patience: 8           # null disables it; `epochs` is then just an upper bound
     min_rel_delta: 0.001  # 0.1 % relative to the best validation length so far
+    exclude_fixed_cost: true  # measure it on val - (2 x depot-to-nearest-customer), see train.py
   run_dir: runs/${run_name:}/${now:%Y%m%d-%H%M%S}  # run_name = checkpoint name (train.py)
   checkpoint_dir: checkpoints
   tag: null               # checkpoint name; default <problem><n>_<baseline>[_<distribution>]

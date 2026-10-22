@@ -117,6 +117,17 @@ def load_policy(path: Path | str, device: str = "cpu") -> tuple[AttentionPolicy,
     return policy, ckpt
 
 
+def unavoidable_cost(batch: Batch) -> float:
+    """Mean lower bound of every tour: leave the depot and come back, 2 x nearest customer.
+
+    With a far depot (Amazon-like data under customer-centric normalisation) this round trip is
+    most of the tour length and does not depend on the policy; a *relative* stopping threshold on
+    the raw length would then demand a much larger relative gain on the part the policy controls.
+    """
+    gap = (batch.locs[:, 1:] - batch.locs[:, :1]).norm(dim=-1)
+    return float(2 * gap.min(dim=1).values.mean())
+
+
 class EarlyStopping:
     """Stop when validation has not improved by ``min_rel_delta`` for ``patience`` epochs.
 
@@ -229,9 +240,11 @@ def train(cfg: DictConfig) -> Path:
 
     es_cfg = t_cfg.get("early_stopping") or {}
     stopper = EarlyStopping(es_cfg.get("patience"), es_cfg.get("min_rel_delta", 0.0))
+    # judge progress on the part of the tour the policy controls (see unavoidable_cost)
+    fixed = unavoidable_cost(val) if es_cfg.get("exclude_fixed_cost", True) else 0.0
     stop = False
     for h in history:  # replay so a resumed run keeps its patience counter
-        stop = stopper.update(h["val_length"])
+        stop = stopper.update(h["val_length"] - fixed)
     if stop:
         log.info("early stopping already reached in a previous run; nothing to do")
 
@@ -284,11 +297,12 @@ def train(cfg: DictConfig) -> Path:
             save_checkpoint(ckpt_dir / f"{tag}.pt", policy, cfg, epoch=epoch, val_length=val_len)
         history_file, history_text = run_dir / "history.json", json.dumps(history, indent=1)
         _retry_io(partial(history_file.write_text, history_text), "history.json")
-        stop = stopper.update(val_len)
+        stop = stopper.update(val_len - fixed)
         if stop:
             log.info(
-                "early stopping: no %.2f%% improvement in %d epochs (best %.4f)",
-                100 * stopper.min_rel_delta, stopper.patience, best_val,
+                "early stopping: no %.2f%% improvement of the controllable length (val - %.3f "
+                "fixed) in %d epochs (best %.4f)",
+                100 * stopper.min_rel_delta, fixed, stopper.patience, best_val,
             )  # fmt: skip
 
     writer.close()

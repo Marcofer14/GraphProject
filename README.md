@@ -133,6 +133,20 @@ clustered stops, real loads and time windows.
 
 ![real vs generated instances](docs/figures/generator_examples.png)
 
+**Training on realistic data is what matters** (CVRP-50, 200 Amazon-like instances; gap on the
+controllable part of the tour, i.e. excluding the unavoidable ~78 % depot round trip; ADR-012):
+
+| Model | Gap | + local search |
+|---|---|---|
+| Trained on calibrated data (customer-centric normalisation) | **3.56 %** | **0.37 %** |
+| Trained on calibrated data (depot-inclusive normalisation) | 3.68 % | 0.34 % |
+| Trained on uniform data | 34.87 % | — |
+| Savings | 14.96 % | — |
+
+The uniform-trained model, within 1.8 % of PyVRP on uniform data, is worse than savings on
+realistic instances; the same architecture trained on the calibrated generator is 10x better.
+The two normalisations tie at 50 stops; the customer-centric one is kept for larger instances.
+
 **Baseline ablation (TSP-20, same 200 instances, same inference code).**
 
 | Training | Multi-start ×8 aug. | Single greedy | Params | Trained trajectories | Hardware |

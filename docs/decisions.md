@@ -97,9 +97,32 @@ At inference, real instances carry (lat, lng): they are now projected to km (equ
 before normalising, since a degree of longitude is ~33 % shorter than a degree of latitude at
 Seattle's latitude and the old code treated them as equal.
 
-Expected effect, to be measured: `cvrp50_amazon` (customers + polar) against `cvrp50_amazon_all`
-(old normalisation) and the uniform-trained model on Amazon-like instances
-(`nr-bench-synth --distribution amazon`, VS Code task "Experiment: compare ...").
+**Result (2026-10-21, 200 Amazon-like CVRP-50 instances).** ~78 % of every tour is the
+unavoidable depot round trip, so gaps are reported on the *controllable* part (travel minus
+2 x depot-to-nearest-customer); total-length gaps are ~4x smaller and hide the differences.
+
+| Model | Gap (controllable) | + local search |
+|---|---|---|
+| Customer-centric + polar (A) | 3.56 % | 0.37 % |
+| Depot-inclusive + xy (B) | 3.68 % | 0.34 % |
+| Uniform-trained model | 34.87 % | — |
+| Savings | 14.96 % | — |
+
+A vs B is a statistical tie (A better on 55 % of instances; mean difference 0.11 ± 0.24 points,
+95 % CI). **Decision: adopt customer-centric + polar** for all further Amazon-like training — equal
+quality at 50 stops and it does not degrade as the customer area shrinks relative to the depot
+distance, which gets worse at 150 stops. The real finding is the *distribution*: the
+uniform-trained model is 10x worse on realistic instances than either calibrated model, worse
+than savings. Caveat: both runs were stopped early by the threshold issue fixed in ADR-013, so
+neither reached its ceiling.
+
+## ADR-013 · Early stopping on the controllable length (2026-10-21)
+The 0.1 % relative threshold was applied to the full validation length. On Amazon-like data the
+depot round trip is 74–81 % of it and does not depend on the policy, so the threshold effectively
+demanded 3.8–5.3x more relative improvement on the part the policy controls, and both ablation
+runs stopped early. Early stopping now judges `val - unavoidable_cost(val)`, where the unavoidable
+cost is the mean of 2 x depot-to-nearest-customer (a true lower bound on every tour). On uniform
+data the correction is negligible (0.15 of 10.65).
 
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to

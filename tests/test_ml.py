@@ -144,6 +144,22 @@ def test_early_stopping_counts_only_significant_improvements() -> None:
     assert not EarlyStopping(patience=None).update(1.0)
 
 
+def test_unavoidable_cost_is_the_nearest_round_trip() -> None:
+    from neural_routing.ml.env import Batch
+    from neural_routing.ml.train import unavoidable_cost
+
+    # depot at x=10; nearest customer at x=1 (distance 9) and x=2 (distance 8)
+    locs = torch.tensor(
+        [[[10.0, 0.0], [0.0, 0.0], [1.0, 0.0]], [[10.0, 0.0], [2.0, 0.0], [0.0, 0.0]]]
+    )
+    assert unavoidable_cost(Batch(locs, torch.zeros(2, 3), tsp=True)) == pytest.approx(17.0)
+    # it is a true lower bound: every tour of a random instance is at least that long
+    batch = generate(64, 10, "cvrp", generator=torch.Generator().manual_seed(0))
+    length, _, _ = AttentionPolicy(SMALL)(batch, 10, decode="sample")
+    gaps = (batch.locs[:, 1:] - batch.locs[:, :1]).norm(dim=-1).min(dim=1).values
+    assert (length >= 2 * gaps[:, None] - 1e-5).all()
+
+
 def test_training_stops_early_and_stays_stopped_on_resume(tmp_path) -> None:  # type: ignore[no-untyped-def]
     import json
 

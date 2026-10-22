@@ -58,11 +58,16 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--runs", type=Path, default=Path("runs"))
     parser.add_argument("--compare", nargs="+", help="experiments to overlay on one axis")
+    parser.add_argument("--experiments", nargs="+", help="one panel each (default: all in runs/)")
     parser.add_argument("--x", choices=list(XLABEL), default="minutes")
     parser.add_argument("--out", type=Path, default=Path("docs/figures/training_curves.png"))
     args = parser.parse_args()
 
-    names = args.compare or sorted(p.name for p in args.runs.iterdir() if p.is_dir())
+    names = (
+        args.compare
+        or args.experiments
+        or sorted(p.name for p in args.runs.iterdir() if p.is_dir())
+    )
     runs = {n: h for n in names if (h := latest_run(args.runs / n))}
     missing = set(names) - set(runs)
     if missing:

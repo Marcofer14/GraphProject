@@ -26,10 +26,15 @@ type Turn = { role: string; content: string };
 async function askGroq(env: Env, messages: Turn[]): Promise<string | null> {
   if (!env.GROQ_API_KEY) return null;
   for (const model of env.GROQ_MODELS.split(",").map((m) => m.trim()).filter(Boolean)) {
+    // gpt-oss models reason before answering and that reasoning counts toward the token limit:
+    // keep it short, leave room for it, and don't send it back
+    const reasoning = model.startsWith("openai/gpt-oss")
+      ? { reasoning_effort: "low", include_reasoning: false, max_completion_tokens: 1024 }
+      : { max_completion_tokens: MAX_TOKENS };
     const res = await fetch("https://api.groq.com/openai/v1/chat/completions", {
       method: "POST",
       headers: { Authorization: `Bearer ${env.GROQ_API_KEY}`, "Content-Type": "application/json" },
-      body: JSON.stringify({ model, messages, max_tokens: MAX_TOKENS, temperature: 0.2 }),
+      body: JSON.stringify({ model, messages, temperature: 0.3, ...reasoning }),
     });
     if (res.ok) {
       const data = (await res.json()) as { choices?: { message?: { content?: string } }[] };

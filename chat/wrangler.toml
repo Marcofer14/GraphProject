@@ -12,13 +12,13 @@ binding = "AI"
 
 [vars]
 ALLOWED_ORIGINS = "https://marcofer14.github.io,http://localhost:5173,http://127.0.0.1:5173"
-# Groq models tried in order; free-tier limits differ per model and change over time
-GROQ_MODELS = "llama-3.3-70b-versatile,llama-3.1-8b-instant"
-WORKERS_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+# Groq models tried in order; the free (developer) plan offers these, check console.groq.com/docs/models
+GROQ_MODELS = "openai/gpt-oss-120b,openai/gpt-oss-20b"
+WORKERS_AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
 
 # `npx wrangler dev --env local`: test on this machine without a Cloudflare login (no Workers AI;
 # a Groq key can go in .dev.vars, which is git-ignored)
 [env.local.vars]
 ALLOWED_ORIGINS = "http://localhost:5173,http://127.0.0.1:5173"
-GROQ_MODELS = "llama-3.3-70b-versatile,llama-3.1-8b-instant"
-WORKERS_AI_MODEL = "@cf/meta/llama-3.1-8b-instruct"
+GROQ_MODELS = "openai/gpt-oss-120b,openai/gpt-oss-20b"
+WORKERS_AI_MODEL = "@cf/meta/llama-3.3-70b-instruct-fp8-fast"

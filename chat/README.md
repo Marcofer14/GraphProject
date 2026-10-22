@@ -31,6 +31,7 @@ delete the old one in Groq.
 ## Change it
 
 * Facts: edit `knowledge.md` (one `## ` section per topic) and `npx wrangler deploy`.
-* Models: `GROQ_MODELS` (tried in order) and `WORKERS_AI_MODEL` in `wrangler.toml`.
+* Models: `GROQ_MODELS` (tried in order) and `WORKERS_AI_MODEL` in `wrangler.toml`. Providers retire
+  models often: if every answer fails, check that these IDs still exist on the free plans.
 * Tests: `npm test`. Local run without a Cloudflare login: `npx wrangler dev --env local`
   (put `GROQ_API_KEY=...` in `.dev.vars`, which is git-ignored, to use Groq locally).

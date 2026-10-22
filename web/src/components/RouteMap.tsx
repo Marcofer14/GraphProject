@@ -32,6 +32,7 @@ interface Props {
   time: number; // seconds after departure; past the end shows the whole route
   dark: boolean;
   onMap?: (map: MLMap | null) => void;
+  small?: boolean;
 }
 
 function addLayers(map: MLMap) {
@@ -69,7 +70,7 @@ const point = (coordinates: [number, number], properties = {}): Feature => ({
   properties,
 });
 
-export function RouteMap({ depot, stops, solution, color, time, dark, onMap }: Props) {
+export function RouteMap({ depot, stops, solution, color, time, dark, onMap, small }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const [styleVersion, setStyleVersion] = useState(0); // bumps when our layers are (re)added
@@ -158,5 +159,5 @@ export function RouteMap({ depot, stops, solution, color, time, dark, onMap }: P
     ]);
   }, [vans, time, color, styleVersion]);
 
-  return <div ref={container} className="map" />;
+  return <div ref={container} className={small ? "map small" : "map"} />;
 }

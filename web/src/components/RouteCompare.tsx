@@ -1,34 +1,16 @@
 import type { Map as MLMap } from "maplibre-gl";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { loadRoute, ROUTE_CHOICES, SOLVERS } from "../data";
+import { ROUTE_CHOICES, SOLVERS } from "../data";
 import { clock, hours, seconds } from "../format";
 import { endTime, tracks } from "../playback";
 import type { Listing, RouteDoc } from "../types";
+import { useSyncedCameras } from "../useSyncedCameras";
 import { RouteMap } from "./RouteMap";
+import { RoutePicker } from "./RoutePicker";
 
 const PLAY_SECONDS = 14; // a whole shift replays in this many seconds
 const NEURAL = new Set(["ours", "network"]);
-
-function useSyncedCameras(a: MLMap | null, b: MLMap | null) {
-  useEffect(() => {
-    if (!a || !b) return;
-    let syncing = false;
-    const follow = (from: MLMap, to: MLMap) => () => {
-      if (syncing) return;
-      syncing = true;
-      to.jumpTo({ center: from.getCenter(), zoom: from.getZoom(), bearing: from.getBearing(), pitch: from.getPitch() });
-      syncing = false;
-    };
-    const [ab, ba] = [follow(a, b), follow(b, a)];
-    a.on("move", ab);
-    b.on("move", ba);
-    return () => {
-      a.off("move", ab);
-      b.off("move", ba);
-    };
-  }, [a, b]);
-}
 
 interface PanelProps {
   doc: RouteDoc;
@@ -96,33 +78,27 @@ function Panel({ doc, solver, other, onSolver, time, dark, onMap }: PanelProps) 
   );
 }
 
-export function RouteCompare({ routes, dark }: { routes: Listing[]; dark: boolean }) {
-  const [routeId, setRouteId] = useState(routes[0]?.id);
-  const [doc, setDoc] = useState<RouteDoc | null>(null);
-  const [error, setError] = useState<string | null>(null);
+interface Props {
+  routes: Listing[];
+  routeId: string | undefined;
+  onRoute: (id: string) => void;
+  doc: RouteDoc | null;
+  dark: boolean;
+}
+
+export function RouteCompare({ routes, routeId, onRoute, doc, dark }: Props) {
   const [left, setLeft] = useState("driver");
   const [right, setRight] = useState("ours");
   const [time, setTime] = useState(Infinity);
   const [playing, setPlaying] = useState(false);
   const [mapA, setMapA] = useState<MLMap | null>(null);
   const [mapB, setMapB] = useState<MLMap | null>(null);
-  useSyncedCameras(mapA, mapB);
+  useSyncedCameras([mapA, mapB]);
 
   useEffect(() => {
-    if (!routeId) return;
-    let live = true;
-    loadRoute(routeId)
-      .then((d) => {
-        if (!live) return;
-        setDoc(d);
-        setTime(Infinity);
-        setPlaying(false);
-      })
-      .catch((e: Error) => live && setError(e.message));
-    return () => {
-      live = false;
-    };
-  }, [routeId]);
+    setTime(Infinity);
+    setPlaying(false);
+  }, [doc]);
 
   const end = useMemo(() => {
     if (!doc) return 0;
@@ -149,12 +125,6 @@ export function RouteCompare({ routes, dark }: { routes: Listing[]; dark: boolea
     return () => cancelAnimationFrame(frame.current);
   }, [playing, end]);
 
-  const byCity = useMemo(() => {
-    const groups = new Map<string, Listing[]>();
-    routes.forEach((r) => groups.set(r.city, [...(groups.get(r.city) ?? []), r]));
-    return [...groups.entries()];
-  }, [routes]);
-
   const play = () => {
     if (!Number.isFinite(time)) setTime(0);
     setPlaying((p) => !p);
@@ -168,20 +138,7 @@ export function RouteCompare({ routes, dark }: { routes: Listing[]; dark: boolea
         any two plans. Replay shows both vans leaving the station at the same time.
       </p>
       <div className="controls">
-        <label>
-          <span className="sr-only">Route</span>
-          <select value={routeId} onChange={(e) => setRouteId(e.target.value)}>
-            {byCity.map(([city, rs]) => (
-              <optgroup key={city} label={city}>
-                {rs.map((r, i) => (
-                  <option key={r.id} value={r.id}>
-                    {city} {i + 1} · {r.stops} stops
-                  </option>
-                ))}
-              </optgroup>
-            ))}
-          </select>
-        </label>
+        <RoutePicker routes={routes} value={routeId} onChange={onRoute} />
         <button type="button" onClick={play} disabled={!doc}>
           {playing ? "Pause" : Number.isFinite(time) ? "Resume" : "Replay the shift"}
         </button>
@@ -202,7 +159,6 @@ export function RouteCompare({ routes, dark }: { routes: Listing[]; dark: boolea
           {clock(Number.isFinite(time) ? time : end)} into the shift
         </span>
       </div>
-      {error && <p className="error">Couldn't load this route ({error}).</p>}
       {doc && (
         <div className="panels">
           <Panel doc={doc} solver={left} other={right} onSolver={setLeft} time={time} dark={dark} onMap={setMapA} />

@@ -119,7 +119,7 @@ export function ResultsTable({ index }: { index: DemoIndex }) {
       <p className="note">
         * Extra driving above the best route any of these solvers found for that delivery, leaving out the trip to and
         from the station that every plan must make (about three quarters of each route). Compute time is the median.
-        Our model's network runs on a GTX 1660 Super GPU (its first answer takes a median 1.8 s on CPU); its local
+        Our model's network runs on a GTX 1660 Super GPU (its first answer takes a median 2.1 s on CPU); its local
         search and both classical solvers use one CPU core.
       </p>
       <p className="note">

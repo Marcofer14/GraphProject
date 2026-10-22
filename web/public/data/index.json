@@ -6,32 +6,32 @@
    "driver": {
     "label": "Real driver",
     "travel_h": 3.2795,
-    "gap_ctrl_pct": 22.59,
+    "gap_ctrl_pct": 22.52,
     "late_pct": 0.09,
     "runtime_s": 0.0,
-    "ours_wins": 199,
+    "ours_wins": 200,
     "ours_rival": "ours"
    },
    "ours": {
     "label": "Our model",
-    "travel_h": 2.9404,
-    "gap_ctrl_pct": 3.18,
+    "travel_h": 2.9354,
+    "gap_ctrl_pct": 2.74,
     "late_pct": 0.01,
-    "runtime_s": 0.499
+    "runtime_s": 0.571
    },
    "network": {
     "label": "Network alone",
-    "travel_h": 3.0841,
-    "gap_ctrl_pct": 10.7,
+    "travel_h": 3.0662,
+    "gap_ctrl_pct": 9.69,
     "late_pct": 0.02,
-    "runtime_s": 0.425,
-    "ours_wins": 191,
+    "runtime_s": 0.504,
+    "ours_wins": 194,
     "ours_rival": "ours"
    },
    "ortools": {
     "label": "OR-Tools",
     "travel_h": 2.9914,
-    "gap_ctrl_pct": 5.38,
+    "gap_ctrl_pct": 5.32,
     "late_pct": 0.0,
     "runtime_s": 10.005,
     "ours_wins": 189,
@@ -39,40 +39,40 @@
    },
    "pyvrp": {
     "label": "PyVRP",
-    "travel_h": 2.9042,
+    "travel_h": 2.9054,
     "gap_ctrl_pct": 0.7,
     "late_pct": 0.0,
-    "runtime_s": 10.037,
-    "ours_wins": 93,
+    "runtime_s": 10.055,
+    "ours_wins": 94,
     "ours_rival": "ours_ils2"
    },
    "ours_ils1": {
     "label": "Our model + search (1 s)",
-    "travel_h": 2.914,
-    "gap_ctrl_pct": 1.53,
+    "travel_h": 2.9109,
+    "gap_ctrl_pct": 1.19,
     "late_pct": 0.0,
     "runtime_s": 1.001
    },
    "ours_ils2": {
     "label": "Our model + search (2 s)",
-    "travel_h": 2.906,
-    "gap_ctrl_pct": 1.07,
+    "travel_h": 2.9028,
+    "gap_ctrl_pct": 0.77,
     "late_pct": 0.0,
     "runtime_s": 2.001
    },
    "ortools_fast": {
     "label": "OR-Tools (0.5 s)",
     "travel_h": 3.1487,
-    "gap_ctrl_pct": 13.35,
+    "gap_ctrl_pct": 13.28,
     "late_pct": 0.09,
     "runtime_s": 0.504,
-    "ours_wins": 187,
+    "ours_wins": 192,
     "ours_rival": "ours"
    },
    "ortools_1s": {
     "label": "OR-Tools (1 s)",
     "travel_h": 3.0717,
-    "gap_ctrl_pct": 9.23,
+    "gap_ctrl_pct": 9.17,
     "late_pct": 0.05,
     "runtime_s": 1.004,
     "ours_wins": 193,
@@ -81,37 +81,37 @@
    "ortools_2s": {
     "label": "OR-Tools (2 s)",
     "travel_h": 3.0506,
-    "gap_ctrl_pct": 8.15,
+    "gap_ctrl_pct": 8.09,
     "late_pct": 0.04,
     "runtime_s": 2.006,
-    "ours_wins": 194,
+    "ours_wins": 193,
     "ours_rival": "ours_ils2"
    },
    "pyvrp_fast": {
     "label": "PyVRP (0.5 s)",
     "travel_h": 2.9417,
-    "gap_ctrl_pct": 2.55,
+    "gap_ctrl_pct": 2.49,
     "late_pct": 0.0,
     "runtime_s": 0.529,
-    "ours_wins": 110,
+    "ours_wins": 102,
     "ours_rival": "ours"
    },
    "pyvrp_1s": {
     "label": "PyVRP (1 s)",
     "travel_h": 2.9233,
-    "gap_ctrl_pct": 1.66,
+    "gap_ctrl_pct": 1.6,
     "late_pct": 0.0,
     "runtime_s": 1.032,
-    "ours_wins": 123,
+    "ours_wins": 122,
     "ours_rival": "ours_ils1"
    },
    "pyvrp_2s": {
     "label": "PyVRP (2 s)",
     "travel_h": 2.9172,
-    "gap_ctrl_pct": 1.33,
+    "gap_ctrl_pct": 1.28,
     "late_pct": 0.0,
     "runtime_s": 2.044,
-    "ours_wins": 133,
+    "ours_wins": 128,
     "ours_rival": "ours_ils2"
    }
   }
@@ -123,8 +123,8 @@
    "stops": 158,
    "hours": {
     "driver": 4.56,
-    "ours": 3.936,
-    "network": 4.189,
+    "ours": 3.935,
+    "network": 4.202,
     "ortools": 4.018,
     "pyvrp": 4.077
    }
@@ -135,8 +135,8 @@
    "stops": 152,
    "hours": {
     "driver": 3.725,
-    "ours": 3.162,
-    "network": 3.38,
+    "ours": 3.158,
+    "network": 3.315,
     "ortools": 3.205,
     "pyvrp": 3.149
    }
@@ -147,8 +147,8 @@
    "stops": 144,
    "hours": {
     "driver": 4.867,
-    "ours": 4.571,
-    "network": 4.815,
+    "ours": 4.565,
+    "network": 4.753,
     "ortools": 4.574,
     "pyvrp": 4.543
    }
@@ -159,10 +159,10 @@
    "stops": 148,
    "hours": {
     "driver": 2.756,
-    "ours": 2.289,
-    "network": 2.409,
+    "ours": 2.253,
+    "network": 2.384,
     "ortools": 2.328,
-    "pyvrp": 2.228
+    "pyvrp": 2.245
    }
   },
   {
@@ -171,8 +171,8 @@
    "stops": 116,
    "hours": {
     "driver": 2.168,
-    "ours": 1.881,
-    "network": 2.005,
+    "ours": 1.884,
+    "network": 1.932,
     "ortools": 1.968,
     "pyvrp": 1.868
    }
@@ -183,8 +183,8 @@
    "stops": 155,
    "hours": {
     "driver": 2.955,
-    "ours": 2.717,
-    "network": 2.859,
+    "ours": 2.698,
+    "network": 2.827,
     "ortools": 2.733,
     "pyvrp": 2.61
    }
@@ -195,8 +195,8 @@
    "stops": 74,
    "hours": {
     "driver": 2.13,
-    "ours": 1.824,
-    "network": 1.892,
+    "ours": 1.851,
+    "network": 1.907,
     "ortools": 1.809,
     "pyvrp": 1.775
    }
@@ -207,8 +207,8 @@
    "stops": 155,
    "hours": {
     "driver": 4.441,
-    "ours": 3.978,
-    "network": 4.107,
+    "ours": 3.949,
+    "network": 4.118,
     "ortools": 4.042,
     "pyvrp": 3.93
    }
@@ -219,8 +219,8 @@
    "stops": 144,
    "hours": {
     "driver": 3.935,
-    "ours": 3.383,
-    "network": 3.555,
+    "ours": 3.392,
+    "network": 3.538,
     "ortools": 3.467,
     "pyvrp": 3.37
    }
@@ -231,8 +231,8 @@
    "stops": 79,
    "hours": {
     "driver": 1.956,
-    "ours": 1.847,
-    "network": 1.964,
+    "ours": 1.818,
+    "network": 1.9,
     "ortools": 1.791,
     "pyvrp": 1.756
    }
@@ -243,10 +243,10 @@
    "stops": 204,
    "hours": {
     "driver": 5.185,
-    "ours": 4.612,
-    "network": 4.894,
+    "ours": 4.709,
+    "network": 4.897,
     "ortools": 4.763,
-    "pyvrp": 4.513
+    "pyvrp": 4.519
    }
   },
   {
@@ -255,8 +255,8 @@
    "stops": 160,
    "hours": {
     "driver": 4.438,
-    "ours": 3.73,
-    "network": 4.045,
+    "ours": 3.683,
+    "network": 4.004,
     "ortools": 3.885,
     "pyvrp": 3.656
    }
@@ -270,7 +270,7 @@
     "ours": 3.499,
     "network": 3.577,
     "ortools": 3.604,
-    "pyvrp": 3.451
+    "pyvrp": 3.454
    }
   },
   {
@@ -279,8 +279,8 @@
    "stops": 151,
    "hours": {
     "driver": 4.843,
-    "ours": 4.352,
-    "network": 4.515,
+    "ours": 4.341,
+    "network": 4.489,
     "ortools": 4.538,
     "pyvrp": 4.377
    }
@@ -291,8 +291,8 @@
    "stops": 195,
    "hours": {
     "driver": 4.798,
-    "ours": 4.608,
-    "network": 4.814,
+    "ours": 4.609,
+    "network": 4.837,
     "ortools": 4.805,
     "pyvrp": 4.655
    }
@@ -303,8 +303,8 @@
    "stops": 128,
    "hours": {
     "driver": 3.591,
-    "ours": 3.228,
-    "network": 3.324,
+    "ours": 3.254,
+    "network": 3.312,
     "ortools": 3.253,
     "pyvrp": 3.195
    }
@@ -315,8 +315,8 @@
    "stops": 153,
    "hours": {
     "driver": 3.19,
-    "ours": 2.914,
-    "network": 3.031,
+    "ours": 2.917,
+    "network": 3.053,
     "ortools": 2.924,
     "pyvrp": 2.904
    }
@@ -327,10 +327,10 @@
    "stops": 138,
    "hours": {
     "driver": 3.056,
-    "ours": 2.735,
-    "network": 2.868,
+    "ours": 2.679,
+    "network": 2.861,
     "ortools": 2.775,
-    "pyvrp": 2.721
+    "pyvrp": 2.724
    }
   },
   {
@@ -339,8 +339,8 @@
    "stops": 152,
    "hours": {
     "driver": 3.32,
-    "ours": 2.876,
-    "network": 2.975,
+    "ours": 2.882,
+    "network": 2.987,
     "ortools": 2.971,
     "pyvrp": 2.874
    }
@@ -351,8 +351,8 @@
    "stops": 139,
    "hours": {
     "driver": 2.35,
-    "ours": 2.111,
-    "network": 2.222,
+    "ours": 2.116,
+    "network": 2.242,
     "ortools": 2.217,
     "pyvrp": 2.086
    }
@@ -363,10 +363,10 @@
    "stops": 163,
    "hours": {
     "driver": 3.62,
-    "ours": 3.378,
-    "network": 3.493,
+    "ours": 3.393,
+    "network": 3.485,
     "ortools": 3.394,
-    "pyvrp": 3.347
+    "pyvrp": 3.354
    }
   },
   {
@@ -375,8 +375,8 @@
    "stops": 152,
    "hours": {
     "driver": 4.448,
-    "ours": 4.04,
-    "network": 4.234,
+    "ours": 4.05,
+    "network": 4.163,
     "ortools": 4.178,
     "pyvrp": 4.035
    }
@@ -387,8 +387,8 @@
    "stops": 101,
    "hours": {
     "driver": 2.772,
-    "ours": 2.53,
-    "network": 2.655,
+    "ours": 2.535,
+    "network": 2.648,
     "ortools": 2.572,
     "pyvrp": 2.516
    }
@@ -399,8 +399,8 @@
    "stops": 90,
    "hours": {
     "driver": 1.833,
-    "ours": 1.611,
-    "network": 1.699,
+    "ours": 1.608,
+    "network": 1.71,
     "ortools": 1.628,
     "pyvrp": 1.587
    }
@@ -411,8 +411,8 @@
    "stops": 147,
    "hours": {
     "driver": 3.851,
-    "ours": 3.542,
-    "network": 3.699,
+    "ours": 3.549,
+    "network": 3.682,
     "ortools": 3.674,
     "pyvrp": 3.525
    }

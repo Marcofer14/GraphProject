@@ -44,7 +44,8 @@ Json = dict[str, Any]
 
 CITIES = {"DLA": "Los Angeles", "DSE": "Seattle", "DBO": "Boston", "DAU": "Austin",
           "DCH": "Chicago"}  # fmt: skip
-CHECKPOINT = "checkpoints/cvrp100_pomo_real.pt"
+CHECKPOINT = "checkpoints/cvrp100_pomo_real_long.pt"  # the reference model (60 epochs)
+DAY_CHECKPOINT = "checkpoints/cvrp100_pomo_real.pt"  # station-days not re-run yet
 
 # benchmark config -> (demo key, label shown on the page)
 ROUTE_SOLVERS = {
@@ -70,7 +71,7 @@ EQUAL_TIME_SOLVERS = {  # other budgets (nr-bench --tag equal_time and --tag ils
 RIVALS = {"0.5": f"attention_ls@{CHECKPOINT}", "1": f"{ILS}:1", "2": f"{ILS}:2", "10": f"{ILS}:2"}
 DAY_SOLVERS = {
     "reference": ("driver", "Real drivers"),
-    f"cluster_attention_ls@{CHECKPOINT}": ("ours", "Our model (cluster + network)"),
+    f"cluster_attention_ls@{DAY_CHECKPOINT}": ("ours", "Our model (cluster + network)"),
     "pyvrp:60": ("pyvrp", "PyVRP (60 s)"),
     "savings": ("savings", "Savings heuristic"),
 }
@@ -275,12 +276,14 @@ def add_ils(df: pd.DataFrame, split: str, out: Path, cpu_budgets: list[float]) -
             row = rows.loc[f"{ILS}:{ils_budget}"].to_dict()
             gpu.append({"budget_s": float(ils_budget)} | solution_payload(
                 inst, json.loads(row["routes"]), float(row["runtime_s"])))  # fmt: skip
-        on_cpu = [doc["race"]["ours_cpu"][0]]
-        for budget in cpu_budgets:
-            sol = cpu.solve(inst, time_limit=budget)
-            on_cpu.append({"budget_s": budget} | solution_payload(
-                inst, [list(r) for r in sol.routes], sol.runtime_s))  # fmt: skip
-        doc["race"] |= {"ours_ils": gpu, "ours_ils_cpu": on_cpu}
+        doc["race"]["ours_ils"] = gpu
+        if cpu_budgets:  # without budgets, keep the CPU points already measured
+            on_cpu = [doc["race"]["ours_cpu"][0]]
+            for budget in cpu_budgets:
+                sol = cpu.solve(inst, time_limit=budget)
+                on_cpu.append({"budget_s": budget} | solution_payload(
+                    inst, [list(r) for r in sol.routes], sol.runtime_s))  # fmt: skip
+            doc["race"]["ours_ils_cpu"] = on_cpu
         path.write_text(json.dumps(doc, separators=(",", ":")))
         log.info("ILS added to %s", path.name)
 
@@ -323,6 +326,8 @@ def main() -> None:
     if args.equal_time:  # same routes, more configs: gaps against the best of all of them
         extra = [pd.read_parquet(p) for p in args.equal_time]
         df = pd.concat([df, *extra]).drop(columns=["gap_pct", "gap_ctrl_pct"])
+        # a config run more than once (e.g. pyvrp:10 in two benchmarks): keep the latest file's
+        df = df.drop_duplicates(["instance", "config"], keep="last")
         # "best route" = best of the solvers the page shows (not older models in the same runs)
         df = add_gaps(df[df["config"].isin([*ROUTE_SOLVERS, *EQUAL_TIME_SOLVERS])].copy())
     if args.add_ils is not None:

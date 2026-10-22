@@ -9,22 +9,26 @@ export function Hero({ index }: { index: DemoIndex }) {
   const { ours, driver, ortools, ortools_1s, pyvrp, pyvrp_1s, ours_ils1 } = s;
   const lessDriving = 100 * (1 - ours.travel_h / driver.travel_h);
   return (
-    <header className="hero">
-      <p className="eyebrow">Ruta Norte Logistics · portfolio project</p>
+    <header className="hero" id="intro">
+      <p className="eyebrow">Ruta Norte Logistics · portfolio project by Marco Fernández</p>
       <h1>Neural last-mile routing</h1>
+      <p className="lead lead-big">
+        Every morning a delivery van leaves its station with about 150 stops to visit, and the order of those stops
+        decides how long the driver spends on the road. This project is an AI that plans that order: a neural network
+        that learned routing by trial and error, then polishes its plan with classic optimisation.
+      </p>
       <p className="lead">
-        A Transformer trained with reinforcement learning plans delivery routes on real Amazon data. It reads the real
-        street travel times between stops, proposes many routes at once, polishes the best ones and keeps improving
-        them with local search for as long as it is given. Below, it faces real drivers and two classical solvers on{" "}
-        {n} routes it never saw.
+        It was trained and tested on 9,164 real Amazon delivery routes (the {n} it is scored on were never used in
+        training), with the real
+        driving times between stops, and compared with what the real drivers did and with two well-known route
+        optimisers, Google OR-Tools and PyVRP. Everything, training included, ran on a GTX 1660 Super, a mid-range
+        gaming card from 2019: planning a route takes about half a second.
       </p>
       <nav className="links">
+        <a href="#how-to">How to use this page</a>
+        <a href="#example">A guided example</a>
+        <a href="#architecture">How it is built</a>
         <a href={REPO}>Code on GitHub</a>
-        <a href="#compare">Compare routes</a>
-        <a href="#race">The race</a>
-        <a href="#day">A whole day</a>
-        <a href="#how">How it works</a>
-        <a href="#results">All results</a>
       </nav>
 
       <div className="cards">

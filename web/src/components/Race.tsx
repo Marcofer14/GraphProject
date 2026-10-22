@@ -18,10 +18,11 @@ interface Props {
   onRoute: (id: string) => void;
   doc: RouteDoc | null;
   dark: boolean;
+  budget: number; // seconds of computing; lives in App so the guided example can set it
+  onBudget: (s: number) => void;
 }
 
-export function Race({ routes, routeId, onRoute, doc, dark }: Props) {
-  const [budget, setBudget] = useState(1);
+export function Race({ routes, routeId, onRoute, doc, dark, budget, onBudget: setBudget }: Props) {
   const [hardware, setHardware] = useState<Hardware>("gpu");
   const [m0, setM0] = useState<MLMap | null>(null);
   const [m1, setM1] = useState<MLMap | null>(null);

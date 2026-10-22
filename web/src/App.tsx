@@ -1,7 +1,12 @@
 import { useEffect, useState } from "react";
 
 import { Hero, ResultsTable } from "./components/Hero";
-import { HowItWorks } from "./components/HowItWorks";
+import { Architecture } from "./components/Architecture";
+import { HowToUse } from "./components/HowToUse";
+import { Limits } from "./components/Limits";
+import { Nav } from "./components/Nav";
+import { UseCases } from "./components/UseCases";
+import { Walkthrough } from "./components/Walkthrough";
 import { Race } from "./components/Race";
 import { RouteCompare } from "./components/RouteCompare";
 import { StationDay } from "./components/StationDay";
@@ -48,6 +53,7 @@ export function App() {
   const dark = useDarkMode();
   const route = useDoc(index?.routes, loadRoute); // shared by the compare and race sections
   const day = useDoc(index?.days, loadDay);
+  const [budget, setBudget] = useState(1); // the race's computing time, also set by the guided example
 
   useEffect(() => {
     loadIndex().then(setIndex, (e: Error) => setError(e.message));
@@ -63,15 +69,21 @@ export function App() {
     dark,
   };
   return (
+    <>
+    <Nav />
     <main className="page">
       <Hero index={index} />
+      <HowToUse />
+      <Walkthrough index={index} onRoute={route.setId} onBudget={setBudget} onDay={day.setId} />
       {route.error && <p className="error">Couldn't load this route ({route.error}).</p>}
       <RouteCompare {...shared} />
-      <Race {...shared} />
+      <Race {...shared} budget={budget} onBudget={setBudget} />
       {day.error && <p className="error">Couldn't load this day ({day.error}).</p>}
       <StationDay days={index.days} dayId={day.id} onDay={day.setId} doc={day.doc} dark={dark} />
-      <HowItWorks index={index} />
+      <UseCases />
+      <Architecture index={index} />
       <ResultsTable index={index} />
+      <Limits index={index} />
       <footer className="footer">
         <p>
           Built by Marco Fernández ·{" "}
@@ -83,5 +95,6 @@ export function App() {
         </p>
       </footer>
     </main>
+    </>
   );
 }

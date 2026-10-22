@@ -224,6 +224,18 @@ uv run nr-bench-synth --problem cvrp --size 20 --configs savings ortools:1 pyvrp
 uv run pytest && uv run ruff check . && uv run mypy
 ```
 
+**HTTP API** (phase 5): `uv run nr-api`, then open http://127.0.0.1:8000/docs.
+
+| Endpoint | Does |
+|---|---|
+| `GET /solvers`, `GET /models` | registered solvers; neural checkpoints available by name |
+| `GET /instances?split=evaluation` | real routes (station, date, stops) |
+| `GET /instances/{split}/{route_id}` | stops with coordinates, demand, service time, window, and the driver's order |
+| `POST /solve` | one solver on one route → routes, `[lng, lat]` paths, metrics |
+| `POST /compare` | several solvers on one route, with gaps vs the best |
+
+Neural solvers take `"model": "cvrp100_pomo_amazon"`, a checkpoint *name* (never a path).
+
 **VS Code:** open the folder and accept the recommended extensions; `.vscode/` selects the `.venv`
 interpreter and adds tasks (`Ctrl+Shift+P` → *Tasks: Run Task*: train, benchmark, TensorBoard, GPU
 monitor, checks) and debug configurations (`F5`).

@@ -10,6 +10,16 @@
     },
     "tasks": [
         {
+            "label": "API: dev server (http://127.0.0.1:8000/docs)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "uvicorn", "neural_routing.api.app:app", "--host", "127.0.0.1",
+                     "--port", "8000", "--reload", "--reload-dir", "src"],
+            "isBackground": true,
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
             "label": "Train: CVRP-50 to 100 epochs",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/Scripts/python.exe",

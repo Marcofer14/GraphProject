@@ -34,13 +34,7 @@ export function Race({ routes, routeId, onRoute, doc, dark, budget, onBudget: se
   const best = useMemo(() => (doc ? bestTravel(doc) : 0), [doc]);
 
   return (
-    <section className="block" id="race">
-      <h2>The race: quality against computing time</h2>
-      <p className="lead">
-        Classical solvers keep improving the longer they run, and so does our model: after its first answer it keeps
-        kicking and re-polishing its best route until the time is up. Move the time budget to see the route each one
-        returns after that many seconds, measured in extra minutes of driving above the best route any of them found.
-      </p>
+    <div id="race">
       <div className="controls">
         <RoutePicker routes={routes} value={routeId} onChange={onRoute} />
         <div className="seg" role="group" aria-label="Our model runs on">
@@ -117,6 +111,6 @@ export function Race({ routes, routeId, onRoute, doc, dark, budget, onBudget: se
         the CPU. Over all 200 test routes with one second each, our model is closer to the best route than PyVRP on
         average and on most routes; PyVRP given 10 s is still better.
       </p>
-    </section>
+    </div>
   );
 }

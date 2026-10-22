@@ -5,7 +5,7 @@ import { ROUTE_CHOICES, SOLVERS } from "../data";
 import { hours, seconds } from "../format";
 import { endTime, tracks } from "../playback";
 import type { Listing, RouteDoc } from "../types";
-import { usePlayback } from "../usePlayback";
+import { usePlayback, useReplay } from "../usePlayback";
 import { useSyncedCameras } from "../useSyncedCameras";
 import { ReplayControls } from "./ReplayControls";
 import { RouteMap } from "./RouteMap";
@@ -85,9 +85,11 @@ interface Props {
   onRoute: (id: string) => void;
   doc: RouteDoc | null;
   dark: boolean;
+  replay?: string; // id of the route or day to replay from the start once loaded (the chat's tour)
+  onReplayed?: () => void;
 }
 
-export function RouteCompare({ routes, routeId, onRoute, doc, dark }: Props) {
+export function RouteCompare({ routes, routeId, onRoute, doc, dark, replay, onReplayed }: Props) {
   const [left, setLeft] = useState("driver");
   const [right, setRight] = useState("ours");
   const [mapA, setMapA] = useState<MLMap | null>(null);
@@ -98,15 +100,20 @@ export function RouteCompare({ routes, routeId, onRoute, doc, dark }: Props) {
     if (!doc) return 0;
     return Math.max(...[left, right].map((k) => endTime(tracks(doc.depot, doc.stops, doc.solvers[k]))));
   }, [doc, left, right]);
-  const { time, playing, toggle, seek } = usePlayback(end, doc);
+  const { time, playing, toggle, seek, restart } = usePlayback(end, doc);
+  useReplay(
+    replay,
+    doc,
+    () => {
+      setLeft("driver");
+      setRight("ours");
+      restart();
+    },
+    onReplayed,
+  );
 
   return (
-    <section className="block" id="compare">
-      <h2>Compare on a real route</h2>
-      <p className="lead">
-        Pick one of {routes.length} real Amazon routes, drawn at random from the 200 the model never saw, and compare
-        any two plans. Replay shows both vans leaving the station at the same time.
-      </p>
+    <div id="compare">
       <div className="controls">
         <RoutePicker routes={routes} value={routeId} onChange={onRoute} />
         <ReplayControls
@@ -129,6 +136,6 @@ export function RouteCompare({ routes, routeId, onRoute, doc, dark }: Props) {
         asymmetric travel-time matrix, and the van waits when it arrives before a delivery window opens. Our model runs
         on a GTX 1660 Super GPU; OR-Tools and PyVRP run on CPU with a 10-second budget.
       </p>
-    </section>
+    </div>
   );
 }

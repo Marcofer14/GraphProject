@@ -1,65 +1,91 @@
 import { SOLVERS } from "../data";
 import { hours, pct, seconds } from "../format";
 import type { DemoIndex } from "../types";
+import { openChat } from "../chat/assistant";
 
 const REPO = "https://github.com/Marcofer14/GraphProject";
 
 export function Hero({ index }: { index: DemoIndex }) {
   const { routes: n, solvers: s } = index.headline;
-  const { ours, driver, ortools, ortools_1s, pyvrp, pyvrp_1s, ours_ils1 } = s;
+  const { ours, driver, pyvrp_1s, ortools_1s } = s;
   const lessDriving = 100 * (1 - ours.travel_h / driver.travel_h);
   return (
     <header className="hero" id="intro">
-      <p className="eyebrow">Ruta Norte Logistics · portfolio project by Marco Fernández</p>
-      <h1>Neural last-mile routing</h1>
-      <p className="lead lead-big">
-        Every morning a delivery van leaves its station with about 150 stops to visit, and the order of those stops
-        decides how long the driver spends on the road. This project is an AI that plans that order: a neural network
-        that learned routing by trial and error, then polishes its plan with classic optimisation.
-      </p>
-      <p className="lead">
-        It was trained and tested on 9,164 real Amazon delivery routes (the {n} it is scored on were never used in
-        training), with the real
-        driving times between stops, and compared with what the real drivers did and with two well-known route
-        optimisers, Google OR-Tools and PyVRP. Everything, training included, ran on a GTX 1660 Super, a mid-range
-        gaming card from 2019: planning a route takes about half a second.
-      </p>
-      <nav className="links">
-        <a href="#how-to">How to use this page</a>
-        <a href="#example">A guided example</a>
-        <a href="#architecture">How it is built</a>
-        <a href={REPO}>Code on GitHub</a>
-      </nav>
+      <div className="hero-grid">
+        <div>
+          <p className="eyebrow">Ruta Norte Logistics · portfolio project by Marco Fernández</p>
+          <h1>
+            Neural last-mile <i>routing</i>
+          </h1>
+          <p className="lead lead-big">
+            Every morning a delivery van leaves its station with about 150 stops to visit. The order of those stops
+            decides how long the driver spends on the road, and with 150 stops there are more possible orders than
+            atoms in the universe, so no one can try them all.
+          </p>
+          <p className="lead">
+            This project is an AI that plans that order. A neural network learned routing by trial and error on 9,164
+            real Amazon delivery routes, with the real driving times between stops, and a classic optimiser polishes
+            its plan. It is compared with what the real drivers did and with two well-known route optimisers, Google
+            OR-Tools and PyVRP, on {n} routes it never saw. Everything, training included, ran on a GTX 1660 Super, a
+            mid-range gaming card from 2019.
+          </p>
+          <div className="hero-actions">
+            <a className="primary" href="#demo">
+              Try the demo
+            </a>
+            <a
+              href="#help"
+              onClick={(e) => {
+                e.preventDefault();
+                openChat();
+              }}
+            >
+              Ask the project
+            </a>
+            <a href="#architecture">How it is built</a>
+            <a href={REPO}>Code on GitHub ↗</a>
+          </div>
+        </div>
+        <dl className="problem">
+          <dt>The problem</dt>
+          <dd>Plan the order of each van's stops so the day needs as little driving as possible, on real streets.</dd>
+          <dt>The approach</dt>
+          <dd>
+            A Transformer trained with reinforcement learning proposes about a thousand routes at once; local search
+            polishes the best ones.
+          </dd>
+          <dt>The result</dt>
+          <dd>
+            {pct(lessDriving)} less driving than the real drivers ({hours(driver.travel_h)} → {hours(ours.travel_h)}{" "}
+            per route), in about half a second, and ahead of PyVRP and OR-Tools when all get the same computing time.
+          </dd>
+        </dl>
+      </div>
 
-      <div className="cards">
+      <div className="cards" style={{ marginTop: 24 }}>
         <article className="card">
-          <p className="big">−{lessDriving.toFixed(1)} %</p>
+          <p className="big">−{lessDriving.toFixed(1)}%</p>
           <p className="card-title">driving time vs real drivers</p>
-          <p className="card-text">
-            {hours(driver.travel_h)} → {hours(ours.travel_h)} per route from the first answer (half a second), shorter
-            on {driver.ours_wins} of {n} routes, with almost no late deliveries.
-          </p>
+          <p className="card-text">About 20 minutes less per van per day, shorter on all {n} test routes.</p>
         </article>
         <article className="card">
           <p className="big">
-            {pyvrp_1s.ours_wins} / {n}
+            {pyvrp_1s.ours_wins}/{n}
           </p>
-          <p className="card-title">routes better than PyVRP at equal time</p>
-          <p className="card-text">
-            Both given one second, our model is also closer to the best route on average ({pct(ours_ils1.gap_ctrl_pct, 2)}{" "}
-            vs {pct(pyvrp_1s.gap_ctrl_pct, 2)} extra driving). PyVRP given 10 s is still better (
-            {pct(pyvrp.gap_ctrl_pct, 2)}).
-          </p>
+          <p className="card-title">routes better than PyVRP</p>
+          <p className="card-text">Both given one second of computing.</p>
         </article>
         <article className="card">
           <p className="big">
-            {ortools_1s.ours_wins} / {n}
+            {ortools_1s.ours_wins}/{n}
           </p>
-          <p className="card-title">routes better than OR-Tools at equal time</p>
-          <p className="card-text">
-            Both given one second. Even with 10 s for OR-Tools against 2 s for our model, ours is better on{" "}
-            {ortools.ours_wins} of {n} routes.
-          </p>
+          <p className="card-title">routes better than Google OR-Tools</p>
+          <p className="card-text">Both given one second of computing.</p>
+        </article>
+        <article className="card">
+          <p className="big">0.5 s</p>
+          <p className="card-title">to plan a 150-stop route</p>
+          <p className="card-text">On a 2019 mid-range gaming GPU; about 2 s on a CPU.</p>
         </article>
       </div>
     </header>
@@ -86,8 +112,7 @@ const OURS = new Set(["ours", "ours_ils1", "ours_ils2"]);
 export function ResultsTable({ index }: { index: DemoIndex }) {
   const { routes: n, solvers } = index.headline;
   return (
-    <section className="block" id="results">
-      <h2>All results on {n} unseen routes</h2>
+    <div id="results">
       <div className="table-wrap">
         <table>
           <thead>
@@ -132,6 +157,6 @@ export function ResultsTable({ index }: { index: DemoIndex }) {
         † Compared route by route with our model given the same time; against the 10-second budgets, with our 2-second
         run; against the driver and the network alone, with its first answer.
       </p>
-    </section>
+    </div>
   );
 }

@@ -5,7 +5,7 @@ import { DAY_SOLVERS, VAN_COLORS } from "../data";
 import { hours, pct, seconds } from "../format";
 import { alignedColors, endTime, tracks } from "../playback";
 import type { DayDoc, Listing } from "../types";
-import { usePlayback } from "../usePlayback";
+import { usePlayback, useReplay } from "../usePlayback";
 import { useSyncedCameras } from "../useSyncedCameras";
 import { ReplayControls } from "./ReplayControls";
 import { RouteMap } from "./RouteMap";
@@ -22,7 +22,7 @@ const median = (xs: number[]) => {
 };
 
 /** Averages over every exported day, so the claim covers all of them and not the one on screen. */
-function Summary({ days }: { days: Listing[] }) {
+export function Summary({ days }: { days: Listing[] }) {
   const mean = (k: string) => days.reduce((a, d) => a + d.hours[k], 0) / days.length;
   const oursBetter = (k: string) => days.filter((d) => d.hours.ours < d.hours[k]).length;
   const saving = 100 * (1 - mean("ours") / mean("driver"));
@@ -138,9 +138,11 @@ interface Props {
   onDay: (id: string) => void;
   doc: DayDoc | null;
   dark: boolean;
+  replay?: string; // id of the route or day to replay from the start once loaded (the chat's tour)
+  onReplayed?: () => void;
 }
 
-export function StationDay({ days, dayId, onDay, doc, dark }: Props) {
+export function StationDay({ days, dayId, onDay, doc, dark, replay, onReplayed }: Props) {
   const [left, setLeft] = useState("driver");
   const [right, setRight] = useState("ours");
   const [mapA, setMapA] = useState<MLMap | null>(null);
@@ -151,18 +153,21 @@ export function StationDay({ days, dayId, onDay, doc, dark }: Props) {
     if (!doc) return 0;
     return Math.max(...[left, right].map((k) => endTime(tracks(doc.depot, doc.stops, doc.solvers[k]))));
   }, [doc, left, right]);
-  const { time, playing, toggle, seek } = usePlayback(end, doc);
+  const { time, playing, toggle, seek, restart } = usePlayback(end, doc);
+  useReplay(
+    replay,
+    doc,
+    () => {
+      setLeft("driver");
+      setRight("ours");
+      restart();
+    },
+    onReplayed,
+  );
 
   if (days.length === 0) return null;
   return (
-    <section className="block" id="day">
-      <h2>A whole station-day</h2>
-      <p className="lead">
-        Every stop a station delivered on one day, re-planned from scratch with the same vans. Our model splits the
-        stops into one compact area per van, routes each with the network, then moves stops between vans when that
-        saves time. {days.length} real days the model never saw, from all five cities; one colour per van.
-      </p>
-      <Summary days={days} />
+    <div id="day">
       <div className="controls">
         <RoutePicker routes={days} value={dayId} onChange={onDay} />
         <ReplayControls
@@ -186,6 +191,6 @@ export function StationDay({ days, dayId, onDay, doc, dark }: Props) {
         scored with the same matrix. Days with 3 to 6 vans and up to 1,200 stops. Our model runs on a GTX 1660 Super
         GPU, PyVRP on one CPU core for 60 s.
       </p>
-    </section>
+    </div>
   );
 }

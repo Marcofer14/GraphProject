@@ -2,6 +2,24 @@ import { useEffect, useRef, useState } from "react";
 
 const PLAY_SECONDS = 14; // a whole shift replays in this many seconds
 
+/** Runs `start` once `pending` is set and `doc` is the one asked for, then reports it with
+ * `onDone`, so another part of the page can ask a tool to replay from the beginning. */
+export function useReplay(pending: string | undefined, doc: { id: string } | null, start: () => void, onDone?: () => void) {
+  const startRef = useRef(start);
+  startRef.current = start;
+  const doneRef = useRef(onDone);
+  doneRef.current = onDone;
+  useEffect(() => {
+    if (!pending || doc?.id !== pending) return;
+    // let the maps draw the new route before the clock starts
+    const id = setTimeout(() => {
+      startRef.current();
+      doneRef.current?.();
+    }, 400);
+    return () => clearTimeout(id);
+  }, [pending, doc]);
+}
+
 /** Replay clock for a shift that ends at `end` seconds. Infinity means "show everything". */
 export function usePlayback(end: number, reset: unknown) {
   const [time, setTime] = useState(Infinity);
@@ -40,5 +58,9 @@ export function usePlayback(end: number, reset: unknown) {
     setPlaying(false);
     setTime(t >= end ? Infinity : t);
   };
-  return { time, playing, toggle, seek };
+  const restart = () => {
+    setTime(0);
+    setPlaying(true);
+  };
+  return { time, playing, toggle, seek, restart };
 }

@@ -1,21 +1,20 @@
+import { openChat } from "../chat/assistant";
+
 const LINKS = [
-  ["#intro", "Intro"],
-  ["#how-to", "How to use"],
-  ["#example", "Example"],
-  ["#compare", "Compare"],
-  ["#race", "Race"],
-  ["#day", "Whole day"],
+  ["#intro", "The problem"],
+  ["#demo", "Demo"],
+  ["#why", "Why it works"],
   ["#use-cases", "Use cases"],
   ["#architecture", "Architecture"],
-  ["#results", "Results"],
+  ["#limits", "Limits"],
 ];
 
-/** Sticky section menu; scrolls sideways on narrow screens. */
+/** Sticky menu in the portfolio's style; the links scroll sideways on narrow screens. */
 export function Nav() {
   return (
     <nav className="topnav" aria-label="Sections">
       <a className="brand" href="#intro">
-        Neural routing
+        Neural <i>routing</i>
       </a>
       <div className="topnav-links">
         {LINKS.map(([href, label]) => (
@@ -24,6 +23,12 @@ export function Nav() {
           </a>
         ))}
       </div>
+      <a className="back" href="https://marcofer14.github.io/">
+        ← Portfolio
+      </a>
+      <button type="button" className="primary" onClick={openChat}>
+        Ask
+      </button>
     </nav>
   );
 }

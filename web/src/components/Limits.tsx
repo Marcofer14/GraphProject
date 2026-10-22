@@ -8,7 +8,12 @@ export function Limits({ index }: { index: DemoIndex }) {
   const s = index.headline.solvers;
   return (
     <section className="block" id="limits">
-      <h2>Limits, honestly</h2>
+      <div className="sec-head">
+        <h2>
+          Limits, <i>honestly</i>
+        </h2>
+        <span className="num">06</span>
+      </div>
       <ul className="limits">
         <li>
           Given 10 seconds, PyVRP is still slightly better on average ({pct(s.pyvrp.gap_ctrl_pct, 2)} above the best

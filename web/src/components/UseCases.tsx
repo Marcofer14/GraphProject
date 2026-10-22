@@ -35,7 +35,12 @@ const NOT_FOR = [
 export function UseCases() {
   return (
     <section className="block" id="use-cases">
-      <h2>Where it is useful</h2>
+      <div className="sec-head">
+        <h2>
+          Where it is <i>useful</i>
+        </h2>
+        <span className="num">04</span>
+      </div>
       <p className="lead">
         The model plans good routes fast, on cheap hardware. That matters most where plans have to be made often, or
         changed on short notice.

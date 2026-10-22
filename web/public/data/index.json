@@ -5,7 +5,7 @@
   "solvers": {
    "driver": {
     "label": "Real driver",
-    "travel_h": 3.279,
+    "travel_h": 3.2795,
     "gap_ctrl_pct": 22.22,
     "late_pct": 0.09,
     "runtime_s": 0.0,
@@ -13,14 +13,14 @@
    },
    "ours": {
     "label": "Our model",
-    "travel_h": 2.94,
+    "travel_h": 2.9404,
     "gap_ctrl_pct": 2.86,
     "late_pct": 0.01,
     "runtime_s": 0.499
    },
    "network": {
     "label": "Network alone",
-    "travel_h": 3.084,
+    "travel_h": 3.0841,
     "gap_ctrl_pct": 10.36,
     "late_pct": 0.02,
     "runtime_s": 0.425,
@@ -28,7 +28,7 @@
    },
    "ortools": {
     "label": "OR-Tools",
-    "travel_h": 2.991,
+    "travel_h": 2.9914,
     "gap_ctrl_pct": 5.05,
     "late_pct": 0.0,
     "runtime_s": 10.005,
@@ -36,7 +36,7 @@
    },
    "pyvrp": {
     "label": "PyVRP",
-    "travel_h": 2.904,
+    "travel_h": 2.9042,
     "gap_ctrl_pct": 0.38,
     "late_pct": 0.0,
     "runtime_s": 10.037,
@@ -44,7 +44,7 @@
    },
    "ortools_fast": {
     "label": "OR-Tools (0.5 s)",
-    "travel_h": 3.149,
+    "travel_h": 3.1487,
     "gap_ctrl_pct": 13.0,
     "late_pct": 0.09,
     "runtime_s": 0.504,
@@ -52,7 +52,7 @@
    },
    "pyvrp_fast": {
     "label": "PyVRP (0.5 s)",
-    "travel_h": 2.942,
+    "travel_h": 2.9417,
     "gap_ctrl_pct": 2.23,
     "late_pct": 0.0,
     "runtime_s": 0.529,
@@ -60,7 +60,7 @@
    },
    "pyvrp_1s": {
     "label": "PyVRP (1 s)",
-    "travel_h": 2.923,
+    "travel_h": 2.9233,
     "gap_ctrl_pct": 1.34,
     "late_pct": 0.0,
     "runtime_s": 1.032,

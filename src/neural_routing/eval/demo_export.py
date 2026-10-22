@@ -221,7 +221,7 @@ def headline(df: pd.DataFrame) -> dict[str, Any]:
         g = df[df["config"] == cfg]
         out[key] = {
             "label": label,
-            "travel_h": round(float(g["travel_time_s"].mean()) / 3600, 3),
+            "travel_h": round(float(g["travel_time_s"].mean()) / 3600, 4),
             "gap_ctrl_pct": round(float(g["gap_ctrl_pct"].mean()), 2),
             "late_pct": round(100 * float(g["tw_violations"].sum() / g["num_customers"].sum()), 2),
             "runtime_s": round(float(g["runtime_s"].median()), 3),

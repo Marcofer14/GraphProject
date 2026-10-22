@@ -20,6 +20,14 @@
             "presentation": { "panel": "dedicated", "reveal": "always" }
         },
         {
+            "label": "Phase 4: fine-tune CVRP-100 Amazon (~2 h)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "cvrp100_amazon_ft"],
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
             "label": "Train: CVRP-50 to 100 epochs",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/Scripts/python.exe",

@@ -1,0 +1,15 @@
+# Phase 4 warm-up: fine-tune the phase-3 reference model (cvrp100_pomo_amazon, ADR-016) with the
+# lessons from the curriculum: 3x lower learning rate, 3x larger validation set (the 150 stage's
+# curve was noise at 200 instances) and more patience. Saved separately as cvrp100_pomo_amazon_ft.
+defaults:
+  - cvrp100_amazon
+  - _self_
+
+train:
+  tag: cvrp100_pomo_amazon_ft
+  init_from: checkpoints/cvrp100_pomo_amazon.pt
+  lr: 3.0e-5
+  val_size: 1000
+  epochs: 40
+  early_stopping:
+    patience: 12

@@ -40,14 +40,14 @@ export async function askAssistant(history: Turn[]): Promise<{ answer: string; n
   }
 }
 
-/** **bold** and "- " bullets from the model's markdown, without injecting HTML. */
+/** **bold**, *italics* and "- " bullets from the model's markdown, without injecting HTML. */
 export function Rich({ text }: { text: string }) {
   const inline = (line: string): ReactNode[] =>
-    line
-      .split(/(\*\*[^*]+\*\*)/g)
-      .map((part, i) =>
-        part.startsWith("**") && part.endsWith("**") ? <b key={i}>{part.slice(2, -2)}</b> : <Fragment key={i}>{part}</Fragment>,
-      );
+    line.split(/(\*\*[^*]+\*\*|\*[^*\s][^*]*\*)/g).map((part, i) => {
+      if (part.startsWith("**") && part.endsWith("**")) return <b key={i}>{part.slice(2, -2)}</b>;
+      if (part.length > 2 && part.startsWith("*") && part.endsWith("*")) return <i key={i}>{part.slice(1, -1)}</i>;
+      return <Fragment key={i}>{part}</Fragment>;
+    });
   const blocks: ReactNode[] = [];
   let bullets: string[] = [];
   const flush = () => {

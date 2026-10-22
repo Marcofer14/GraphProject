@@ -38,6 +38,7 @@ class ModelConfig:
 
 
 TIME_CAP = 1e3  # "no window" end, in normalised time units, before log scaling
+DONE_CHECK_EVERY = 8  # decoding steps between GPU -> CPU "all tours finished?" checks
 
 
 class Norm(nn.Module):
@@ -202,7 +203,11 @@ class AttentionPolicy(nn.Module):
             env.step(first)
             actions.append(first)
 
-        while not env.all_done:
+        # asking "all done?" forces the CPU to wait for the GPU; asking every few steps lets it
+        # queue kernels ahead. Extra steps are no-ops: finished tours stay at the depot at no cost
+        step = 0
+        while step % DONE_CHECK_EVERY or not env.all_done:
+            step += 1
             mask = env.mask()
             cur, start = h[bidx, env.cur], h[bidx, first]  # (B, P, D)
             context = [cur, start, (1.0 - env.used).unsqueeze(-1)]

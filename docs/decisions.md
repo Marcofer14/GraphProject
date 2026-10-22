@@ -212,6 +212,21 @@ optimisers, but no travel-time optimiser is close to the drivers, who deliver zo
 when it costs time. A model that trades a little travel time for driver-like zone order is a
 natural extension (imitation of the zone sequence), left for later.
 
+## ADR-019 · Faster inference: measure first, then two exact changes (2026-10-22)
+Profiling one real 165-stop route showed the network was *not* the main cost: scoring the 1,320
+decoded candidates one by one in Python took 51 % of the 1.3 s, the network 42 %, local search 7 %.
+Two changes, both exact (tested: identical tours and identical chosen solutions):
+* **Vectorised candidate scoring** (`candidate_objectives`): travel and lateness of all candidates
+  in one pass of numpy over the decoding steps, matching `core.evaluate` to 1e-9. An intermediate
+  version re-ranked only the 32 shortest candidates by lateness; it looked *better* on travel time
+  because it silently traded punctuality for distance, so it was replaced by the exact version.
+* **Fewer GPU -> CPU syncs while decoding**: "are all tours finished?" is asked every 8 steps
+  instead of every step, letting the CPU queue kernels ahead; extra steps are no-ops.
+
+Result on 10 real routes: network 953 -> 356 ms (2.7x), network + local search 1116 -> 442 ms
+(2.5x), same answers; a 32 x 100 training step 0.81 -> 0.68 s. `torch.compile` / CUDA graphs were
+not needed for the demo's latency target and are left out (fragile on Windows).
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

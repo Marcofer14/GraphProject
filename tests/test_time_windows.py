@@ -173,6 +173,21 @@ def test_time_window_model_trains_and_solves_end_to_end(tmp_path) -> None:  # ty
         assert m.is_complete and m.capacity_excess == 0
 
 
+def test_vectorised_candidate_objective_matches_the_evaluator() -> None:
+    from neural_routing.solvers.neural import candidate_objectives
+
+    batch = with_windows(generate(1, 12, "cvrp", generator=torch.Generator().manual_seed(9)), 9)
+    _, actions = rollout(batch, P=40, seed=9)
+    inst = to_instance(batch, 0)
+    candidates = actions[0].numpy()
+    got = candidate_objectives(inst, candidates, tw_penalty=10.0)
+    for c, value in zip(candidates, got, strict=True):
+        m = evaluate(inst, Solution.from_lists(routes_of(torch.tensor(c))))
+        assert value == pytest.approx(m.travel_time_s + 10.0 * m.lateness_s, rel=1e-9)
+    assert (got > np.array([evaluate(inst, Solution.from_lists(routes_of(torch.tensor(c))))
+                            .travel_time_s for c in candidates]) - 1e-9).all()  # fmt: skip
+
+
 def test_augmentation_and_slicing_keep_the_windows() -> None:
     batch = with_windows(generate(3, 10, "cvrp", generator=torch.Generator().manual_seed(7)), 7)
     env, actions = rollout(batch, P=2, seed=7)

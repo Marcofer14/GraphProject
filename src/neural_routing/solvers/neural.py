@@ -71,6 +71,33 @@ def seconds_per_unit(instance: VRPInstance, locs: np.ndarray) -> float:
     return num / den if den > 0 else 1.0
 
 
+def candidate_objectives(
+    instance: VRPInstance, candidates: np.ndarray, tw_penalty: float
+) -> np.ndarray:
+    """travel + tw_penalty x lateness of many decoded tours at once, exactly as core.evaluate.
+
+    ``candidates`` (C, T) are node sequences that start after the depot and pad with depot
+    visits; a depot visit ends a route (clock back to 0), as the evaluator does between routes.
+    """
+    D = instance.durations
+    prev = np.zeros(len(candidates), dtype=np.int64)
+    clock = np.zeros(len(candidates))
+    travel = np.zeros(len(candidates))
+    late = np.zeros(len(candidates))
+    windows = instance.has_time_windows
+    tw, service = instance.time_windows, instance.service_times
+    for t in range(candidates.shape[1] + 1):
+        node = candidates[:, t] if t < candidates.shape[1] else np.zeros_like(prev)
+        leg = D[prev, node]
+        travel += leg
+        if windows:
+            start = np.maximum(clock + leg, tw[node, 0])
+            late += np.where(node > 0, np.maximum(start - tw[node, 1], 0.0), 0.0)
+            clock = np.where(node > 0, start + service[node], 0.0)
+        prev = node
+    return travel + tw_penalty * late
+
+
 def to_batch(
     instance: VRPInstance,
     device: str,
@@ -154,19 +181,18 @@ class AttentionSolver(Solver):
             batch = augment8(batch)
         P = instance.num_customers if self.multistart else 1
         _, _, actions = policy(batch, P, decode="greedy", forced_starts=self.multistart)
-        candidates = actions.reshape(-1, actions.shape[-1]).tolist()
-        # score each distinct candidate on the real matrix: travel + penalty x lateness
-        scored = []
-        for acts in {tuple(a) for a in candidates}:
-            routes = split_routes(list(acts))
-            scored.append((self._objective(instance, routes), routes))
-        scored.sort(key=lambda c: c[0])
+        candidates = np.unique(actions.reshape(-1, actions.shape[-1]).cpu().numpy(), axis=0)
+        # travel of every candidate at once on the real matrix (identical to core.evaluate:
+        # a mid-tour depot visit just splits the tour into routes, the legs are the same)
+        objective = candidate_objectives(instance, candidates, self.tw_penalty)
+        order = np.argsort(objective, kind="stable")
+        ranked = [split_routes(candidates[i].tolist()) for i in order[: max(1, self.polish_top)]]
         if self.polish_top:
             from neural_routing.solvers.local_search import polish
 
-            polished = [polish(instance, r) for _, r in scored[: self.polish_top]]
+            polished = [polish(instance, r) for r in ranked[: self.polish_top]]
             return min(polished, key=lambda r: self._objective(instance, r))
-        return scored[0][1]
+        return ranked[0]
 
 
 @register("attention_ls")

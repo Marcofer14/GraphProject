@@ -197,6 +197,21 @@ Changes:
 * Inference passes the instance's matrix in the training unit (calibrated speed x box size).
 * Config `cvrp100_real_matrix` (from `cvrp100_pomo_amazon`, lr 5e-5, 500 validation slices).
 
+## ADR-018 · Driver-similarity score (the Amazon challenge metric) (2026-10-22)
+Travel time alone cannot tell whether a shorter route is *reasonable*. `core/driver_score.py`
+re-implements the challenge's scoring rule: sequence deviation (how far each next stop jumps in
+the driver's order, normalised to [0, 1]) times ERP per edit (edit distance where substituting
+two stops costs their z-normalised, min-shifted travel time and an insert/delete costs 1000).
+0 means the driver's sequence; the rule ignores direction (the reversed route scores 0). Every
+benchmark row now carries `driver_score` and the solution's routes as JSON, so new metrics can be
+computed later without re-solving.
+
+First measurement, 20 evaluation routes: PyVRP 0.08, attention + local search 0.09, savings + LS
+0.09, OR-Tools 0.10, nearest neighbour 0.12. The hybrid is as driver-like as the classic
+optimisers, but no travel-time optimiser is close to the drivers, who deliver zone by zone even
+when it costs time. A model that trades a little travel time for driver-like zone order is a
+natural extension (imitation of the zone sequence), left for later.
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

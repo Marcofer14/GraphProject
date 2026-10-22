@@ -16,6 +16,7 @@ complete solution found for each instance by any config in the run.
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import os
 import sys
@@ -30,6 +31,7 @@ import pandas as pd
 from tqdm import tqdm
 
 from neural_routing.core import VRPInstance, evaluate
+from neural_routing.core.driver_score import driver_score
 from neural_routing.data.amazon import AmazonDataset, TravelTimeModel
 from neural_routing.solvers import get_solver
 
@@ -87,6 +89,8 @@ def run_instance(
             solver = get_solver(name, **kw.get(cfg, kw.get(name, {})))
             sol = solver.solve(instance, time_limit=limit)
             row |= evaluate(instance, sol).as_dict()
+            row["driver_score"] = driver_score(instance, sol)
+            row["routes"] = json.dumps([list(r) for r in sol.routes])  # recompute metrics later
         except Exception as exc:  # a failing solver must not kill a long benchmark
             log.warning("%s on %s failed: %s", cfg, instance.name, exc)
             row["error"] = str(exc)
@@ -126,6 +130,11 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
             "gap_%": g["gap_pct"].mean(),
             "gap_%_p90": g["gap_pct"].quantile(0.9),
             **({"gap_ctrl_%": g["gap_ctrl_pct"].mean()} if "gap_ctrl_pct" in df else {}),
+            **(
+                {"driver_score": g["driver_score"].mean()}
+                if "driver_score" in df and df["driver_score"].notna().any()
+                else {}
+            ),
             "late_stops_%": 100 * g["tw_violations"].sum() / g["num_customers"].sum(),
             "vehicles": g["num_routes"].mean(),
             "runtime_s_p50": g["runtime_s"].median(),

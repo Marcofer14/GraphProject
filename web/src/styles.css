@@ -437,3 +437,55 @@ tr.ours {
 #day .cards {
   margin-bottom: 14px;
 }
+
+h3 {
+  font-size: 1.15rem;
+  font-weight: 600;
+  margin: 2rem 0 0.5rem;
+}
+
+.pipeline {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
+  gap: 12px;
+  counter-reset: none;
+}
+
+.step {
+  position: relative;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-top: 3px solid var(--accent);
+  border-radius: 0 0 var(--radius) var(--radius);
+  padding: 0.9rem 1rem 1rem;
+}
+
+.step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 0.9rem;
+}
+
+.how-cards {
+  margin-top: 12px;
+}
+
+.limits {
+  max-width: 90ch;
+  padding-left: 1.2rem;
+  color: var(--text-muted);
+}
+
+.limits li {
+  margin-bottom: 0.4rem;
+}

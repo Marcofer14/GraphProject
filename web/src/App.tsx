@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { Hero, ResultsTable } from "./components/Hero";
+import { HowItWorks } from "./components/HowItWorks";
 import { Race } from "./components/Race";
 import { RouteCompare } from "./components/RouteCompare";
 import { StationDay } from "./components/StationDay";
@@ -69,6 +70,7 @@ export function App() {
       <Race {...shared} />
       {day.error && <p className="error">Couldn't load this day ({day.error}).</p>}
       <StationDay days={index.days} dayId={day.id} onDay={day.setId} doc={day.doc} dark={dark} />
+      <HowItWorks index={index} />
       <ResultsTable index={index} />
       <footer className="footer">
         <p>

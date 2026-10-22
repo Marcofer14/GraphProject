@@ -41,7 +41,7 @@ challenge's similarity to the driver's sequence (0 = identical; ADR-018).
 | **Real driver** | 3.28 | 22.22 % | 0 | 0.09 % | — |
 | Coordinate-only attention, network alone | 3.61 | 38.09 % | 0.09 | 0.26 % | 0.4 s |
 
-* The hybrid cuts **10.4 % of driving time against the real drivers** (3.28 h → 2.94 h per route)
+* The hybrid cuts **10.3 % of driving time against the real drivers** (3.28 h → 2.94 h per route)
   and beats OR-Tools given 10 s by a wide margin (2.86 % vs 5.05 %) in half a second, with routes
   as driver-like as PyVRP's and almost no late stops.
 * **Seeing the street network is what mattered** (phase 4, ADR-017): straight-line coordinates get

@@ -26,11 +26,13 @@ flowchart LR
     B4 --> F4
 ```
 
-**Status 2026-10-22:** phase 4 ✅ — matrix-aware model trained on real routes (network alone
-38.1 % → 10.4 %, hybrid 4.33 % → 2.86 %, ADR-017), driver-similarity score (ADR-018), 2.5x faster
-inference (ADR-019), whole-day fleet planning −12.5 % hours vs drivers (ADR-020) · 5.1 API ✅ ·
-next: the demo (6.x) and deployment, then optional extras (5.2–5.4, continued training,
-zone-aware imitation of drivers).
+**Status 2026-10-22:** phase 4 ✅ — matrix-aware model trained on real routes for 60 epochs
+(ADR-017), driver-similarity score (ADR-018), 2.5x faster inference (ADR-019), whole-day fleet
+planning −9.9 % hours vs drivers on 20 unseen days (ADR-020), anytime search that beats PyVRP at
+equal time (ADR-021) · 5.1 API ✅ · 6.1–6.3 ✅ as a static demo on GitHub Pages
+(https://marcofer14.github.io/GraphProject/). 5.2–5.4 and 6.4 need a live backend and are
+optional: the demo is precomputed. Possible extras: a live API on Hugging Face Spaces, ONNX for
+CPU, OSRM street geometry, zone-aware imitation of drivers.
 
 | Step | Needs | Delivers |
 |---|---|---|

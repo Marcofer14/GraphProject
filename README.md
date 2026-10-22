@@ -3,6 +3,8 @@
 Deep reinforcement learning solvers for vehicle routing with capacities and time windows (CVRPTW),
 benchmarked against OR-Tools, PyVRP and **real delivery drivers** on ~9,000 Amazon last-mile routes.
 
+**[Live demo](https://marcofer14.github.io/GraphProject/)**
+
 > **The case.** *Ruta Norte Logistics* (fictional) runs last-mile delivery vans out of several
 > stations. Its historical operations are the public
 > [Amazon Last Mile Routing Research Challenge](https://registry.opendata.aws/amazon-last-mile-challenges/)
@@ -15,60 +17,71 @@ benchmarked against OR-Tools, PyVRP and **real delivery drivers** on ~9,000 Amaz
 
 ## Status
 
+**Live demo: [marcofer14.github.io/GraphProject](https://marcofer14.github.io/GraphProject/)**
+(real routes on a map, the solvers racing against computing time, whole station-days, and how it
+works).
+
 | Phase | Scope | State |
 |---|---|---|
 | 0 | Repo, tooling, CI, data model, ETL, EDA | ✅ |
 | 1 | Baselines (NN, Clarke-Wright, OR-Tools, PyVRP) + evaluator + benchmark | ✅ |
 | 2 | Attention Model + POMO (REINFORCE) on TSP/CVRP, neural solver, synthetic benchmark | ✅ |
 | 3 | Calibrated generator, customer-centric normalisation, time windows, local search, size curriculum, real-route evaluation | ✅ |
-| 4 | Matrix-aware attention trained on real routes, driver-similarity score, 2.5x faster inference, whole-day fleet planning | ✅ |
-| 5–7 | API (done) · Next.js map demo · deployment | ⏳ |
+| 4 | Matrix-aware attention trained on real routes (60 epochs), driver-similarity score, 2.5x faster inference, anytime search, whole-day fleet planning | ✅ |
+| 5 | FastAPI backend (Docker/PostGIS/OSRM dropped: the demo is static) | ✅ |
+| 6 | Static web demo (React + MapLibre) on GitHub Pages | ✅ |
 
 ## Headline: 200 unseen real Amazon routes
 
 Evaluation split (routes never seen by the generator or any model), ~150 stops each, real
-asymmetric travel-time matrices and real time windows. The *controllable* gap excludes the
-unavoidable station round trip (~75 % of every route; ADR-012). *Driver score* is the Amazon
-challenge's similarity to the driver's sequence (0 = identical; ADR-018).
+asymmetric travel-time matrices and real time windows. *Above the best* is the controllable gap:
+extra driving above the best route any solver in the table found, leaving out the unavoidable
+station round trip (~75 % of every route; ADR-012). Our model is `cvrp100_pomo_real_long`
+(ADR-017); "better on" compares it route by route with our model given the same time (against
+the 10 s budgets, with its 2 s run). Classical runs were made without other load on the machine.
 
-| Solver | Hours / route | Controllable gap | Driver score | Late stops | Runtime |
+| Solver | Compute | Hours / route | Above the best | Late stops | Our model better on |
 |---|---|---|---|---|---|
-| PyVRP (10 s) | 2.90 | 0.38 % | 0.07 | 0 % | 10 s |
-| **Matrix-aware attention + local search (phase 4)** | **2.94** | **2.86 %** | 0.07 | 0.01 % | **0.5 s** |
-| Coordinate-only attention + local search (phase 3) | 2.98 | 4.33 % | 0.07 | 0.07 % | 0.5 s |
-| OR-Tools (10 s) | 2.99 | 5.05 % | 0.08 | 0 % | 10 s |
-| Matrix-aware attention, network alone | 3.08 | 10.36 % | 0.07 | 0.02 % | 0.4 s |
-| **Real driver** | 3.28 | 22.22 % | 0 | 0.09 % | — |
-| Coordinate-only attention, network alone | 3.61 | 38.09 % | 0.09 | 0.26 % | 0.4 s |
+| PyVRP | 10 s | 2.91 | 0.70 % | 0 % | 94 of 200 |
+| **Our model + iterated local search** | **2 s** | **2.90** | **0.77 %** | 0 % | — |
+| PyVRP | 2 s | 2.92 | 1.28 % | 0 % | 128 of 200 |
+| **Our model + iterated local search** | **1 s** | **2.91** | **1.19 %** | 0 % | — |
+| PyVRP | 1 s | 2.92 | 1.60 % | 0 % | 122 of 200 |
+| PyVRP | 0.5 s | 2.94 | 2.49 % | 0 % | 102 of 200 |
+| **Our model, first answer** | **0.57 s** | **2.94** | **2.74 %** | 0.01 % | — |
+| OR-Tools | 10 s | 2.99 | 5.32 % | 0 % | 189 of 200 |
+| OR-Tools | 1 s | 3.07 | 9.17 % | 0.05 % | 193 of 200 |
+| Network alone (no local search) | 0.50 s | 3.07 | 9.69 % | 0.02 % | 194 of 200 |
+| **Real driver** | — | 3.28 | 22.52 % | 0.09 % | 200 of 200 |
 
-* The hybrid cuts **10.3 % of driving time against the real drivers** (3.28 h → 2.94 h per route)
-  and beats OR-Tools given 10 s by a wide margin (2.86 % vs 5.05 %) in half a second, with routes
-  as driver-like as PyVRP's and almost no late stops.
-* **Seeing the street network is what mattered** (phase 4, ADR-017): straight-line coordinates get
-  a third of each stop's nearest neighbours wrong. Adding learned attention biases from the real
-  travel-time matrix and training on real route slices took the network alone from 38.1 % to
-  10.4 % and the hybrid from 4.33 % to 2.86 %. Fine-tuning the coordinate model on synthetic data
-  instead made it slightly worse on real routes (4.86 %).
-* **At equal time, the anytime version beats PyVRP** (ADR-021). The one-shot hybrid stops after
-  ~0.5 s, where PyVRP is ahead (2.23 % vs 2.86 %). Letting it keep searching with iterated local
-  search until the budget runs out gives, measured against the best route of every run:
+* **−10.5 % driving time against the real drivers** (3.28 h → 2.94 h per route from the first
+  answer), shorter on all 200 routes, with almost no late stops.
+* **At equal computing time it beats PyVRP and OR-Tools** (ADR-021): after its first answer the
+  model keeps improving its best route with iterated local search until the budget runs out. With
+  1 s it is closer to the best route than PyVRP on average and on 122 of 200 routes; with 2 s, on
+  128. PyVRP given 10 s is still slightly better on average (0.70 % vs 0.77 %).
+* **Seeing the street network is what mattered** (ADR-017): straight-line coordinates get a third
+  of each stop's nearest neighbours wrong. Learned attention biases from the real travel-time
+  matrix and training on real route slices took the network alone from 38 % to under 10 % above
+  the best; 20 more epochs (40 → 60) took the first answer from 2.97 % to 2.74 %.
+* The network runs on a GTX 1660 Super GPU (~0.5 s; a median 2.1 s on CPU); its local search and
+  both classical solvers use one CPU core.
 
-  | Budget | Hybrid + ILS | PyVRP | Hybrid better on | OR-Tools |
-  |---|---|---|---|---|
-  | 1 s | **1.53 %** | 1.66 % | 123 of 200 routes | 9.23 % |
-  | 2 s | **1.07 %** | 1.33 % | 133 of 200 routes | 8.15 % |
+Full tables: [`results/route_evaluation_n200_phase4b.md`](results/route_evaluation_n200_phase4b.md),
+[`results/route_evaluation_n200_ils_long1.md`](results/route_evaluation_n200_ils_long1.md),
+[`results/route_evaluation_n200_ils_long.md`](results/route_evaluation_n200_ils_long.md),
+[`results/route_evaluation_n200_equal_time.md`](results/route_evaluation_n200_equal_time.md),
+earlier models: [`results/route_evaluation_n200_phase4.md`](results/route_evaluation_n200_phase4.md),
+[`results/route_evaluation_n200_final.md`](results/route_evaluation_n200_final.md).
 
-  PyVRP given 10 s is still better on average (0.70 %). The network's ~0.4 s runs on a GTX 1660
-  Super GPU (median 1.8 s on CPU); the search and both classical solvers use one CPU core.
-
-Full tables: [`results/route_evaluation_n200_phase4.md`](results/route_evaluation_n200_phase4.md),
-equal time: [`results/route_evaluation_n200_equal_time.md`](results/route_evaluation_n200_equal_time.md)
-and [`results/route_evaluation_n200_ils.md`](results/route_evaluation_n200_ils.md),
-phase 3: [`results/route_evaluation_n200_final.md`](results/route_evaluation_n200_final.md).
-
-**Whole station-days** (6 real days, ~5 vans each; ADR-020): clustering the day into vans and
-routing each with the matrix-aware network gives **13.43 fleet hours per day vs 15.34 for the real
-drivers (−12.5 %)** and 14.26 for PyVRP given 60 s, in 2 s per day.
+**Whole station-days** (ADR-020): 20 real days the model never saw (evaluation split, 3–6 vans,
+~600 stops each, all five cities), re-planned from scratch with the same vans. Clustering the day
+into vans and routing each with the network gives **11.88 fleet hours per day vs 13.18 for the
+real drivers (−9.9 %, fewer on all 20 days)**, with fewer late stops than the drivers (0.16 % vs
+0.18 %), in ~2 s per day. PyVRP given 60 s averages 12.45 h but wins 10 of the 20 days (the
+smaller ones). On these days the vans' areas are far apart: a median 0.2 % of stops change van,
+so the saving comes mostly from the order inside each van.
+[`results/station-day_evaluation_n20_fleet_long.md`](results/station-day_evaluation_n20_fleet_long.md)
 
 ## Baseline results
 

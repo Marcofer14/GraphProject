@@ -205,6 +205,12 @@ the coordinate-only model on synthetic data with a lower learning rate got sligh
 routes (4.86 %): the gain comes from the matrix and the real data, not from more training.
 `cvrp100_pomo_real` is the phase-4 reference model.
 
+*Update: 20 more epochs* (config `cvrp100_real_matrix_long`, resumed from the 40-epoch state
+with `train.continue_from` under its own name; ~1 h; stopped at epoch 60, validation 33.40 →
+33.22 and still slowly improving). Same 200 routes, against the best of every run: network alone
+10.7 % → 9.7 %, first answer 2.97 % → 2.74 %, late stops unchanged. `cvrp100_pomo_real_long` is
+the reference model from v0.5.0 on; the demo uses it.
+
 ## ADR-018 · Driver-similarity score (the Amazon challenge metric) (2026-10-22)
 Travel time alone cannot tell whether a shorter route is *reasonable*. `core/driver_score.py`
 re-implements the challenge's scoring rule: sequence deviation (how far each next stop jumps in
@@ -258,6 +264,26 @@ the advantage over PyVRP comes from the decomposition (PyVRP does not converge o
 late stops of the control, and the matrix-aware model beats the phase-3 one. Six days is a small
 sample and lateness is slightly above the drivers', so these numbers are indicative.
 
+*Update: 20 unseen days.* The six days above come from the training split, and the real-matrix
+model trained on slices of those very routes. Re-run on 20 days of the evaluation split (no model
+saw them; `nr-bench --min-routes 3 --max-stops 1200`, 3–6 vans, ~600 stops, all five cities):
+
+| Solver | Fleet hours / day | Gap | Late stops | Better than ours on |
+|---|---|---|---|---|
+| Cluster + network, 60 epochs | **11.88** | 0.84 % | 0.16 % | — |
+| Cluster + network, 40 epochs | 11.88 | 0.90 % | 0.23 % | 8 of 20 days |
+| Cluster + savings/LS (control) | 12.04 | 2.31 % | 0.55 % | 2 of 20 days |
+| PyVRP (60 s) | 12.45 | 4.41 % | 0 % | 10 of 20 days |
+| Savings | 12.88 | 10.07 % | 0.75 % | 0 of 20 days |
+| Real drivers | 13.18 | 12.68 % | 0.18 % | 0 of 20 days |
+
+**−9.9 % fleet hours against the drivers**, fewer on all 20 days and with fewer late stops than
+the drivers; this replaces the −12.5 % above as the headline. PyVRP is behind on average but wins
+half the days, the smaller ones it can solve in a minute. On these days the vans' areas are far
+apart: a median 0.2 % of stops change van and 8 days keep the drivers' groups exactly, so the
+saving comes mostly from the order inside each van, not from re-assigning stops (the demo shows
+this share per day).
+
 ## ADR-021 · Anytime hybrid: iterated local search until the time limit
 **Context.** At equal computing time PyVRP beat the hybrid on average (0.5 s: 2.23 % vs 2.86 %
 controllable gap), because the hybrid stops at its first local optimum after ~0.5 s while PyVRP
@@ -281,6 +307,19 @@ At equal time the hybrid is now ahead of PyVRP on average, on the 90th percentil
 routes; with 2 s it wins as many routes as PyVRP given 10 s (93 vs 96), though PyVRP's 10 s
 average is still better (0.70 %). Caveat: the network's ~0.4 s runs on a GTX 1660 Super GPU,
 while the search and both classical solvers use one CPU core each.
+
+*Update: 60-epoch model and fair timing.* A later evaluation task ran PyVRP 1 s next to six
+worker processes and the GPU model, and PyVRP got clearly worse (2.25 % instead of 1.60 %): a
+1-second budget is sensitive to machine load. Every number below comes from runs made without
+other load (both ours and PyVRP's), with `cvrp100_pomo_real_long`:
+
+| Budget | Hybrid + ILS | PyVRP | Hybrid better on | OR-Tools |
+|---|---|---|---|---|
+| 1 s | **1.19 %** | 1.60 % | 122 of 200 routes | 9.17 % |
+| 2 s | **0.77 %** | 1.28 % | 128 of 200 routes | 8.09 % |
+
+PyVRP given 10 s: 0.70 %; against our 2 s run it is better on 93 routes, worse on 94, tied on 13
+(that run comes from the loaded evaluation; a 10-second budget is far less sensitive to it).
 
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to

@@ -157,6 +157,9 @@ def main() -> None:
                                                          "ortools:1", "pyvrp:1"])  # fmt: skip
     parser.add_argument("--route-score", default=None, help="only routes with this driver score")
     parser.add_argument("--max-stops", type=int, default=None, help="station-day size limit")
+    parser.add_argument(
+        "--min-routes", type=int, default=1, help="station-days with this many vans or more"
+    )
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) // 2))
     parser.add_argument("--out", type=Path, default=Path("results"))
@@ -187,6 +190,7 @@ def main() -> None:
             days = ds.station_days()
             if args.max_stops:
                 days = days[days["num_stops"] <= args.max_stops]
+            days = days[days["num_routes"] >= args.min_routes]
             days = days.sample(n=min(args.n, len(days)), random_state=args.seed)
             pairs = [
                 (str(st), str(date))

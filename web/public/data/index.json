@@ -420,69 +420,223 @@
  ],
  "days": [
   {
-   "id": "DCH2_2018-08-02",
+   "id": "DAU1_2018-09-10",
+   "city": "Austin",
+   "stops": 625,
+   "hours": {
+    "driver": 12.233,
+    "ours": 10.681,
+    "pyvrp": 11.709,
+    "savings": 11.953
+   }
+  },
+  {
+   "id": "DBO2_2018-06-07",
+   "city": "Boston",
+   "stops": 563,
+   "hours": {
+    "driver": 14.564,
+    "ours": 11.734,
+    "pyvrp": 12.086,
+    "savings": 13.085
+   }
+  },
+  {
+   "id": "DBO3_2018-08-28",
+   "city": "Boston",
+   "stops": 462,
+   "hours": {
+    "driver": 11.887,
+    "ours": 11.023,
+    "pyvrp": 10.958,
+    "savings": 11.873
+   }
+  },
+  {
+   "id": "DCH3_2018-07-08",
    "city": "Chicago",
-   "stops": 292,
+   "stops": 766,
    "hours": {
-    "driver": 6.072,
-    "ours": 4.711,
-    "pyvrp": 5.036,
-    "savings": 5.364
+    "driver": 15.049,
+    "ours": 13.364,
+    "pyvrp": 13.489,
+    "savings": 14.669
    }
   },
   {
-   "id": "DCH2_2018-08-10",
-   "city": "Chicago",
-   "stops": 1115,
-   "hours": {
-    "driver": 24.653,
-    "ours": 20.381,
-    "pyvrp": 19.609,
-    "savings": 22.65
-   }
-  },
-  {
-   "id": "DLA4_2018-07-21",
+   "id": "DLA3_2018-08-28",
    "city": "Los Angeles",
-   "stops": 849,
+   "stops": 383,
    "hours": {
-    "driver": 18.233,
-    "ours": 16.912,
-    "pyvrp": 19.919,
-    "savings": 18.53
+    "driver": 7.596,
+    "ours": 6.748,
+    "pyvrp": 6.601,
+    "savings": 7.573
    }
   },
   {
-   "id": "DLA5_2018-07-31",
+   "id": "DLA4_2018-06-23",
    "city": "Los Angeles",
-   "stops": 1156,
+   "stops": 356,
    "hours": {
-    "driver": 28.696,
-    "ours": 26.135,
-    "pyvrp": 26.914,
-    "savings": 28.284
+    "driver": 7.527,
+    "ours": 6.891,
+    "pyvrp": 6.853,
+    "savings": 7.523
    }
   },
   {
-   "id": "DLA9_2018-08-03",
+   "id": "DLA5_2018-09-01",
    "city": "Los Angeles",
-   "stops": 283,
+   "stops": 521,
    "hours": {
-    "driver": 6.27,
-    "ours": 5.577,
-    "pyvrp": 7.279,
-    "savings": 6.128
+    "driver": 12.679,
+    "ours": 11.823,
+    "pyvrp": 13.039,
+    "savings": 12.41
    }
   },
   {
-   "id": "DSE2_2018-08-01",
+   "id": "DLA5_2018-10-02",
+   "city": "Los Angeles",
+   "stops": 518,
+   "hours": {
+    "driver": 13.54,
+    "ours": 12.425,
+    "pyvrp": 12.239,
+    "savings": 13.651
+   }
+  },
+  {
+   "id": "DLA7_2018-06-24",
+   "city": "Los Angeles",
+   "stops": 540,
+   "hours": {
+    "driver": 12.884,
+    "ours": 12.022,
+    "pyvrp": 12.773,
+    "savings": 12.351
+   }
+  },
+  {
+   "id": "DLA7_2018-07-11",
+   "city": "Los Angeles",
+   "stops": 941,
+   "hours": {
+    "driver": 21.234,
+    "ours": 19.264,
+    "pyvrp": 20.238,
+    "savings": 20.957
+   }
+  },
+  {
+   "id": "DLA7_2018-09-11",
+   "city": "Los Angeles",
+   "stops": 659,
+   "hours": {
+    "driver": 13.988,
+    "ours": 12.714,
+    "pyvrp": 12.687,
+    "savings": 13.906
+   }
+  },
+  {
+   "id": "DLA7_2018-09-17",
+   "city": "Los Angeles",
+   "stops": 496,
+   "hours": {
+    "driver": 10.297,
+    "ours": 9.264,
+    "pyvrp": 10.299,
+    "savings": 9.98
+   }
+  },
+  {
+   "id": "DLA7_2018-09-21",
+   "city": "Los Angeles",
+   "stops": 1010,
+   "hours": {
+    "driver": 21.605,
+    "ours": 19.379,
+    "pyvrp": 22.406,
+    "savings": 21.005
+   }
+  },
+  {
+   "id": "DLA8_2018-06-10",
+   "city": "Los Angeles",
+   "stops": 490,
+   "hours": {
+    "driver": 8.591,
+    "ours": 7.652,
+    "pyvrp": 7.533,
+    "savings": 8.536
+   }
+  },
+  {
+   "id": "DLA8_2018-07-06",
+   "city": "Los Angeles",
+   "stops": 481,
+   "hours": {
+    "driver": 9.421,
+    "ours": 8.266,
+    "pyvrp": 7.989,
+    "savings": 9.163
+   }
+  },
+  {
+   "id": "DLA9_2018-06-01",
+   "city": "Los Angeles",
+   "stops": 375,
+   "hours": {
+    "driver": 7.731,
+    "ours": 7.094,
+    "pyvrp": 7.005,
+    "savings": 7.786
+   }
+  },
+  {
+   "id": "DLA9_2018-06-30",
+   "city": "Los Angeles",
+   "stops": 562,
+   "hours": {
+    "driver": 12.109,
+    "ours": 11.004,
+    "pyvrp": 10.85,
+    "savings": 11.446
+   }
+  },
+  {
+   "id": "DLA9_2018-09-11",
+   "city": "Los Angeles",
+   "stops": 860,
+   "hours": {
+    "driver": 17.333,
+    "ours": 15.7,
+    "pyvrp": 15.533,
+    "savings": 16.742
+   }
+  },
+  {
+   "id": "DSE5_2018-09-05",
    "city": "Seattle",
-   "stops": 409,
+   "stops": 394,
    "hours": {
-    "driver": 8.132,
-    "ours": 6.841,
-    "pyvrp": 6.795,
-    "savings": 8.233
+    "driver": 11.221,
+    "ours": 10.012,
+    "pyvrp": 10.12,
+    "savings": 10.782
+   }
+  },
+  {
+   "id": "DSE5_2018-10-02",
+   "city": "Seattle",
+   "stops": 906,
+   "hours": {
+    "driver": 22.082,
+    "ours": 20.461,
+    "pyvrp": 24.494,
+    "savings": 22.247
    }
   }
  ]

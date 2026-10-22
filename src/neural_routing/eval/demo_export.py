@@ -11,7 +11,7 @@ written here once. Three kinds of files:
 Demo routes are drawn at random per city from the phase-4 evaluation (not cherry-picked)::
 
     uv run nr-demo-export --results results/raw/route_evaluation_n200_phase4_*.parquet \\
-        --days results/raw/station-day_training_n6_fleet_*.parquet \\
+        --days results/raw/station-day_evaluation_n20_fleet_long_*.parquet \\
         --equal-time results/raw/route_evaluation_n200_equal_time_*.parquet \\
                      results/raw/route_evaluation_n200_ils_*.parquet
 
@@ -45,7 +45,6 @@ Json = dict[str, Any]
 CITIES = {"DLA": "Los Angeles", "DSE": "Seattle", "DBO": "Boston", "DAU": "Austin",
           "DCH": "Chicago"}  # fmt: skip
 CHECKPOINT = "checkpoints/cvrp100_pomo_real_long.pt"  # the reference model (60 epochs)
-DAY_CHECKPOINT = "checkpoints/cvrp100_pomo_real.pt"  # station-days not re-run yet
 
 # benchmark config -> (demo key, label shown on the page)
 ROUTE_SOLVERS = {
@@ -71,7 +70,7 @@ EQUAL_TIME_SOLVERS = {  # other budgets (nr-bench --tag equal_time and --tag ils
 RIVALS = {"0.5": f"attention_ls@{CHECKPOINT}", "1": f"{ILS}:1", "2": f"{ILS}:2", "10": f"{ILS}:2"}
 DAY_SOLVERS = {
     "reference": ("driver", "Real drivers"),
-    f"cluster_attention_ls@{DAY_CHECKPOINT}": ("ours", "Our model (cluster + network)"),
+    f"cluster_attention_ls@{CHECKPOINT}": ("ours", "Our model (cluster + network)"),
     "pyvrp:60": ("pyvrp", "PyVRP (60 s)"),
     "savings": ("savings", "Savings heuristic"),
 }
@@ -295,7 +294,7 @@ def main() -> None:
     parser.add_argument("--results", type=Path, required=True, help="phase-4 route parquet")
     parser.add_argument("--split", default="evaluation")
     parser.add_argument("--days", type=Path, default=None, help="station-day fleet parquet")
-    parser.add_argument("--days-split", default="training")
+    parser.add_argument("--days-split", default="evaluation")
     parser.add_argument("--per-city", type=int, default=5)
     parser.add_argument("--limits", type=float, nargs="+", default=[0.5, 1.0, 2.0, 5.0])
     parser.add_argument("--seed", type=int, default=0)
@@ -308,7 +307,7 @@ def main() -> None:
         help="more route parquets on the same routes (equal time, ILS)",
     )
     parser.add_argument("--index-only", action="store_true",
-                        help="only rewrite the headline in an existing index.json")  # fmt: skip
+                        help="rewrite the headline (and the days, with --days) only")  # fmt: skip
     parser.add_argument(
         "--add-ils",
         type=float,
@@ -335,6 +334,10 @@ def main() -> None:
     if args.index_only or args.add_ils is not None:
         path = args.out / "index.json"
         index = json.loads(path.read_text()) | {"headline": headline(df)}
+        if args.days:  # re-run station-days replace the old ones; the routes are kept
+            for old in (args.out / "days").glob("*.json"):
+                old.unlink()
+            index["days"] = export_days(pd.read_parquet(args.days), args.days_split, args.out)
         path.write_text(json.dumps(index, indent=1))
         log.info("headline rewritten in %s", path)
         return

@@ -145,6 +145,10 @@ halves that (0.21 % -> 0.11 %) but nearly triples the distance gap (0.64 % -> 1.
 search). On 10 real routes it was likewise worse in distance (11.6 % vs 5.1 % controllable gap)
 with no lateness gain. It learned to be over-cautious for windows that almost never bind.
 
+With the real window widths (`tw_tightness` 1.0) the picture is the same: window-blind + local
+search 0.46 % controllable gap and 0.02 % late stops; time-aware 1.58 % and 0.01 %; OR-Tools (10 s)
+0.82 % and 0.01 %; PyVRP 0.33 %. The window-blind hybrid beats OR-Tools in 0.2 s.
+
 **Decision:** the curriculum (`cvrp100_amazon` -> `cvrp150_amazon`, `train.init_from`) starts from
 the window-blind `cvrp50_pomo_amazon`. Real windows are still honoured at inference: candidates are
 chosen on travel + 10 x lateness and local search never accepts added lateness; the final

@@ -35,11 +35,32 @@ from neural_routing.solvers import get_solver
 
 log = logging.getLogger(__name__)
 
+# solvers that run on the GPU in the main process (one model load, no per-worker CUDA context)
+NEURAL = {"attention", "attention_greedy", "attention_ls"}
+
 
 def parse_config(cfg: str) -> tuple[str, float]:
     """``solver[@checkpoint][:time_limit]`` -> (solver, time_limit)."""
     head, _, limit = cfg.rpartition(":") if ":" in cfg.split("@")[-1] else (cfg, "", "")
     return head.split("@", 1)[0], float(limit) if limit else 1.0
+
+
+def neural_kwargs(configs: Iterable[str], default_checkpoint: str | None = None) -> dict[str, Any]:
+    """Per-config solver kwargs: ``attention@path.pt`` pins a checkpoint."""
+    out: dict[str, Any] = {}
+    for cfg in configs:
+        if parse_config(cfg)[0] not in NEURAL:
+            continue
+        ckpt = cfg.split("@", 1)[1].split(":")[0] if "@" in cfg else default_checkpoint
+        if ckpt:
+            out[cfg] = {"checkpoint": ckpt}
+    return out
+
+
+def unavoidable_s(instance: VRPInstance) -> float:
+    """Lower bound shared by every solution: leave the depot and come back at least once."""
+    D = instance.durations
+    return float(D[0, 1:].min() + D[1:, 0].min())
 
 
 def run_instance(
@@ -59,6 +80,7 @@ def run_instance(
             "num_vehicles_real": instance.num_vehicles,
             "route_score": instance.meta.get("route_score"),
             "station": instance.meta.get("station"),
+            "fixed_s": unavoidable_s(instance),
         }
         try:
             kw = solver_kwargs or {}
@@ -83,9 +105,15 @@ def _station_day_job(
 
 
 def add_gaps(df: pd.DataFrame) -> pd.DataFrame:
+    """Gap vs the best complete solution per instance, on the full tour and on its controllable
+    part (tour minus the unavoidable depot round trip, which dominates last-mile routes)."""
     ok = df["is_complete"].fillna(False).astype(bool)
     best = df[ok].groupby("instance")["travel_time_s"].min()
     df["gap_pct"] = 100 * (df["travel_time_s"] / df["instance"].map(best) - 1)
+    if "fixed_s" in df:
+        ctrl = df["travel_time_s"] - df["fixed_s"]
+        best_ctrl = df["instance"].map(best) - df["fixed_s"]
+        df["gap_ctrl_pct"] = 100 * (ctrl / best_ctrl - 1)
     return df
 
 
@@ -97,6 +125,7 @@ def summarize(df: pd.DataFrame) -> pd.DataFrame:
             "travel_time_h": g["travel_time_s"].mean() / 3600,
             "gap_%": g["gap_pct"].mean(),
             "gap_%_p90": g["gap_pct"].quantile(0.9),
+            **({"gap_ctrl_%": g["gap_ctrl_pct"].mean()} if "gap_ctrl_pct" in df else {}),
             "late_stops_%": 100 * g["tw_violations"].sum() / g["num_customers"].sum(),
             "vehicles": g["num_routes"].mean(),
             "runtime_s_p50": g["runtime_s"].median(),
@@ -122,19 +151,30 @@ def main() -> None:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--workers", type=int, default=max(1, (os.cpu_count() or 2) // 2))
     parser.add_argument("--out", type=Path, default=Path("results"))
+    parser.add_argument("--tag", default="", help="suffix for the output files")
+    parser.add_argument("--checkpoint", default=None, help="default neural checkpoint")
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     ds = AmazonDataset(args.split)
     rng = np.random.default_rng(args.seed)
+    neural = [c for c in args.configs if parse_config(c)[0] in NEURAL]
+    classic = [c for c in args.configs if c not in neural]
+    rows: list[dict[str, Any]] = []
     with ProcessPoolExecutor(args.workers) as pool:
         if args.mode == "route":
             routes = ds.routes
             if args.route_score:
                 routes = routes[routes["route_score"] == args.route_score]
             ids = rng.choice(routes.index.to_numpy(), size=min(args.n, len(routes)), replace=False)
-            futures = [pool.submit(_route_job, args.split, rid, args.configs) for rid in ids]
+            futures = [pool.submit(_route_job, args.split, rid, classic) for rid in ids]
+            if neural:  # GPU, main process, while the pool works on the classic solvers
+                kwargs = neural_kwargs(neural, args.checkpoint)
+                for rid in tqdm(ids, desc="neural"):
+                    rows += run_instance(ds.route_instance(str(rid)), neural, kwargs)
         else:
+            if neural:
+                raise SystemExit("neural solvers are supported in --mode route only")
             model = ds.fit_travel_model(seed=args.seed)
             log.info("travel model: %.1f s + %.1f s/km", model.intercept, model.slope)
             days = ds.station_days()
@@ -145,12 +185,13 @@ def main() -> None:
                 pool.submit(_station_day_job, args.split, str(st), str(date), model, args.configs)
                 for st, date in zip(days["station_code"], days["date"], strict=True)
             ]
-        rows = [row for f in tqdm(as_completed(futures), total=len(futures)) for row in f.result()]
+        rows += [row for f in tqdm(as_completed(futures), total=len(futures)) for row in f.result()]
 
     df = add_gaps(pd.DataFrame(rows))
     summary = summarize(df)
     stamp = datetime.now().strftime("%Y%m%d-%H%M")
     tag = f"{args.mode}_{args.split}_n{len(df['instance'].unique())}"
+    tag += f"_{args.tag}" if args.tag else ""
     (args.out / "raw").mkdir(parents=True, exist_ok=True)
     df.to_parquet(args.out / "raw" / f"{tag}_{stamp}.parquet", index=False)
     md = args.out / f"{tag}.md"

@@ -1,0 +1,15 @@
+# Curriculum stage 2/3: CVRPTW-100, warm-started from the CVRPTW-50 model.
+# Measured on the GTX 1660 Super: batch 32 x 100 starts ~2.4 GB, ~1.4 s/step -> ~6 min/epoch.
+defaults:
+  - cvrptw50_amazon
+  - _self_
+
+num_customers: 100
+
+train:
+  tag: cvrptw100_pomo_amazon
+  init_from: checkpoints/cvrptw50_pomo_amazon.pt
+  batch_size: 32
+  steps_per_epoch: 250
+  epochs: 25
+  val_size: 300

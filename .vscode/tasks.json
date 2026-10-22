@@ -43,6 +43,40 @@
             "presentation": { "panel": "dedicated", "reveal": "always" }
         },
         {
+            "label": "Curriculum 1/2: CVRPTW-100 (from CVRPTW-50, ~2.5 h)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "cvrptw100_amazon"],
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
+            "label": "Curriculum 2/2: CVRPTW-150 (from CVRPTW-100, ~3.3 h)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "cvrptw150_amazon"],
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
+            "label": "Curriculum: 100 then 150 (overnight)",
+            "dependsOrder": "sequence",
+            "dependsOn": ["Curriculum 1/2: CVRPTW-100 (from CVRPTW-50, ~2.5 h)",
+                          "Curriculum 2/2: CVRPTW-150 (from CVRPTW-100, ~3.3 h)"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Final: 200 real Amazon routes (evaluation split)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.eval.benchmark", "--mode", "route", "--split",
+                     "evaluation", "--n", "200", "--workers", "6", "--tag", "final", "--configs",
+                     "reference", "savings_ls", "ortools:10", "pyvrp:10",
+                     "attention_ls@checkpoints/cvrptw150_pomo_amazon.pt",
+                     "attention_ls@checkpoints/cvrp50_pomo_amazon.pt"],
+            "problemMatcher": []
+        },
+        {
             "label": "Bench: CVRPTW-50 (tight windows 0.25)",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/Scripts/python.exe",

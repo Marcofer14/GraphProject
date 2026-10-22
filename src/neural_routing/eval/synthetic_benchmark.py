@@ -26,12 +26,11 @@ from tqdm import tqdm
 
 from neural_routing.core import VRPInstance
 from neural_routing.data.synthetic import random_instance
-from neural_routing.eval.benchmark import add_gaps, parse_config, run_instance, summarize
+from neural_routing.eval.benchmark import NEURAL, add_gaps, parse_config, run_instance, summarize
 from neural_routing.ml.env import default_capacity
 from neural_routing.ml.generators import generate_amazon_like
 from neural_routing.solvers import get_solver
 
-NEURAL = {"attention", "attention_greedy", "attention_ls"}
 DEFAULT_CONFIGS = ["nearest_neighbor", "savings", "ortools:1", "pyvrp:2", "attention"]
 
 

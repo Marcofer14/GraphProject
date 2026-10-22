@@ -249,6 +249,26 @@ def train(cfg: DictConfig) -> Path:
                 evaluate_policy(baseline_policy, val, False, tw_penalty=pen).mean().item()
             )
         log.info("resumed %s at epoch %d (best val %.4f)", resume_path, start_epoch, best_val)
+    elif t_cfg.get("init_from"):
+        # a new stage (e.g. a larger size in a curriculum): weights only, fresh optimiser and
+        # history. The architecture must match; the instance size may differ (the policy is
+        # size-agnostic). Resuming this stage later takes precedence over init_from.
+        init = torch.load(t_cfg.init_from, map_location=device, weights_only=False)
+        if init["model_config"] != vars(policy.cfg):
+            raise ValueError(
+                f"init_from {t_cfg.init_from}: model config {init['model_config']} "
+                f"differs from {vars(policy.cfg)}"
+            )
+        policy.load_state_dict(init["state_dict"])
+        if baseline_policy is not None:
+            baseline_policy.load_state_dict(policy.state_dict())
+            baseline_val = (
+                evaluate_policy(baseline_policy, val, False, tw_penalty=pen).mean().item()
+            )
+        log.info(
+            "initialised from %s (%s%d, epoch %d)",
+            t_cfg.init_from, init["problem"], init["num_customers"], init["epoch"],
+        )  # fmt: skip
 
     params = sum(p.numel() for p in policy.parameters())
     log.info(

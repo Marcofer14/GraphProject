@@ -221,6 +221,47 @@ def test_checkpoint_save_retries_transient_lock(tmp_path, monkeypatch) -> None: 
         tr._retry_io(lambda: (_ for _ in ()).throw(PermissionError("always")), "x", attempts=2)
 
 
+def test_init_from_starts_a_new_stage_from_other_weights(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    import json
+
+    from omegaconf import OmegaConf
+
+    from neural_routing.ml.train import train
+
+    def cfg_for(n: int, tag: str):  # type: ignore[no-untyped-def]
+        cfg = OmegaConf.load("configs/base.yaml")
+        cfg.num_customers = n
+        # instance norm: no running statistics, so lr = 0 really freezes every saved tensor
+        cfg.model = {**cfg.model, **vars(SMALL), "norm": "instance"}
+        cfg.train.update(epochs=1, steps_per_epoch=2, batch_size=2, val_size=4, device="cpu")
+        cfg.train.update(tag=tag, run_dir=str(tmp_path / tag), checkpoint_dir=str(tmp_path / "c"))
+        del cfg["hydra"]
+        return cfg
+
+    stage1 = train(cfg_for(6, "stage1"))
+    w1 = torch.load(stage1, weights_only=False)["state_dict"]
+
+    cfg2 = cfg_for(9, "stage2")  # a different size: the policy is size-agnostic
+    cfg2.train.lr = 0.0  # frozen, so the stage-2 weights must equal stage 1's exactly
+    stage2 = train(cfg2)
+    w2 = torch.load(stage2, weights_only=False)["state_dict"]
+    assert any(not torch.equal(w1[k], w2[k]) for k in w1)  # not initialised: random weights
+
+    cfg2b = cfg_for(9, "stage2b")
+    cfg2b.train.update(lr=0.0, init_from=str(stage1))
+    w2b = torch.load(train(cfg2b), weights_only=False)["state_dict"]
+    assert all(torch.equal(w1[k], w2b[k]) for k in w1)
+    history = json.loads((tmp_path / "stage2b" / "history.json").read_text())
+    assert [h["epoch"] for h in history] == [0]  # fresh history, not a resume
+
+    bad = cfg_for(9, "bad")
+    bad.model.embed_dim = 64
+    bad.model.num_heads = 4
+    bad.train.init_from = str(stage1)
+    with pytest.raises(ValueError, match="model config"):
+        train(bad)
+
+
 def test_augment8_preserves_tour_length() -> None:
     batch, env, actions = random_rollout("tsp", B=2, P=1)
     aug = augment8(batch)

@@ -78,6 +78,26 @@ def test_amazon_like_benchmark_instance() -> None:
     assert m.is_complete and m.capacity_excess == 0
 
 
+def test_controllable_gap_ignores_the_fixed_round_trip() -> None:
+    import pandas as pd
+
+    from neural_routing.eval.benchmark import add_gaps, neural_kwargs, unavoidable_s
+
+    inst = random_instance(10, seed=0, capacity=np.inf)
+    D = inst.durations
+    assert unavoidable_s(inst) == pytest.approx(D[0, 1:].min() + D[1:, 0].min())
+    # fixed 80 of 100 vs 110: +10 % on the tour, +50 % on the part a solver controls
+    df = pd.DataFrame(
+        {"instance": ["a", "a"], "config": ["x", "y"], "travel_time_s": [100.0, 110.0],
+         "fixed_s": [80.0, 80.0], "is_complete": [True, True]}
+    )  # fmt: skip
+    out = add_gaps(df)
+    assert out["gap_pct"].tolist() == pytest.approx([0.0, 10.0])
+    assert out["gap_ctrl_pct"].tolist() == pytest.approx([0.0, 50.0])
+    kw = neural_kwargs(["savings", "attention_ls@a.pt", "attention"], default_checkpoint="d.pt")
+    assert kw == {"attention_ls@a.pt": {"checkpoint": "a.pt"}, "attention": {"checkpoint": "d.pt"}}
+
+
 def test_unknown_solver() -> None:
     with pytest.raises(KeyError):
         get_solver("does-not-exist")

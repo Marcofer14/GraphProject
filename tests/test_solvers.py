@@ -7,7 +7,8 @@ from neural_routing.core import evaluate
 from neural_routing.data.synthetic import random_instance
 from neural_routing.solvers import available_solvers, get_solver
 
-SOLVERS = [s for s in available_solvers() if s != "reference" and not s.startswith("attention")]
+# neural solvers need a trained checkpoint (absent in CI); they are tested with tiny models elsewhere
+SOLVERS = [s for s in available_solvers() if s != "reference" and "attention" not in s]
 
 
 @pytest.mark.parametrize("name", SOLVERS)

@@ -59,6 +59,7 @@ nr-bench = "neural_routing.eval.benchmark:main"
 nr-train = "neural_routing.ml.train:main"
 nr-bench-synth = "neural_routing.eval.synthetic_benchmark:main"
 nr-api = "neural_routing.api.app:main"
+nr-demo-export = "neural_routing.eval.demo_export:main"
 
 [build-system]
 requires = ["hatchling"]

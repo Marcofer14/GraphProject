@@ -49,8 +49,13 @@ challenge's similarity to the driver's sequence (0 = identical; ADR-018).
   travel-time matrix and training on real route slices took the network alone from 38.1 % to
   10.4 % and the hybrid from 4.33 % to 2.86 %. Fine-tuning the coordinate model on synthetic data
   instead made it slightly worse on real routes (4.86 %).
+* **At equal time PyVRP is still ahead.** Given 0.5 s it reaches 2.23 % (our hybrid wins on 110 of
+  the 200 routes but has a heavier tail) and 1.34 % with 1 s; OR-Tools gets 13.0 % in 0.5 s, so
+  against it the hybrid wins on 187 of 200 routes. Our runtimes are on a GTX 1660 Super; on CPU
+  the hybrid takes a median 1.8 s (0.4–4.5 s, 25 routes).
 
 Full tables: [`results/route_evaluation_n200_phase4.md`](results/route_evaluation_n200_phase4.md),
+equal time: [`results/route_evaluation_n200_equal_time.md`](results/route_evaluation_n200_equal_time.md),
 phase 3: [`results/route_evaluation_n200_final.md`](results/route_evaluation_n200_final.md).
 
 **Whole station-days** (6 real days, ~5 vans each; ADR-020): clustering the day into vans and

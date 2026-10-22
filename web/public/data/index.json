@@ -1,0 +1,413 @@
+{
+ "generated": "2026-10-22",
+ "headline": {
+  "routes": 200,
+  "solvers": {
+   "driver": {
+    "label": "Real driver",
+    "travel_h": 3.279,
+    "gap_ctrl_pct": 22.22,
+    "late_pct": 0.09,
+    "runtime_s": 0.0
+   },
+   "ours": {
+    "label": "Our model",
+    "travel_h": 2.94,
+    "gap_ctrl_pct": 2.86,
+    "late_pct": 0.01,
+    "runtime_s": 0.499
+   },
+   "network": {
+    "label": "Network alone",
+    "travel_h": 3.084,
+    "gap_ctrl_pct": 10.36,
+    "late_pct": 0.02,
+    "runtime_s": 0.425
+   },
+   "ortools": {
+    "label": "OR-Tools",
+    "travel_h": 2.991,
+    "gap_ctrl_pct": 5.05,
+    "late_pct": 0.0,
+    "runtime_s": 10.005
+   },
+   "pyvrp": {
+    "label": "PyVRP",
+    "travel_h": 2.904,
+    "gap_ctrl_pct": 0.38,
+    "late_pct": 0.0,
+    "runtime_s": 10.037
+   }
+  }
+ },
+ "routes": [
+  {
+   "id": "RouteID_97d3477a-5ce9-4cc0-89e3-84e680ea9b58",
+   "city": "Austin",
+   "stops": 158,
+   "hours": {
+    "driver": 4.56,
+    "ours": 3.936,
+    "network": 4.189,
+    "ortools": 4.018,
+    "pyvrp": 4.077
+   }
+  },
+  {
+   "id": "RouteID_b48844c7-5180-4b2d-bd7b-f5ad73d2cdcf",
+   "city": "Austin",
+   "stops": 152,
+   "hours": {
+    "driver": 3.725,
+    "ours": 3.162,
+    "network": 3.38,
+    "ortools": 3.205,
+    "pyvrp": 3.149
+   }
+  },
+  {
+   "id": "RouteID_788e7d68-e57e-48c2-b62f-8e491fdded8a",
+   "city": "Austin",
+   "stops": 144,
+   "hours": {
+    "driver": 4.867,
+    "ours": 4.571,
+    "network": 4.815,
+    "ortools": 4.574,
+    "pyvrp": 4.543
+   }
+  },
+  {
+   "id": "RouteID_8295661f-4891-4598-bf15-6e09fad89776",
+   "city": "Austin",
+   "stops": 148,
+   "hours": {
+    "driver": 2.756,
+    "ours": 2.289,
+    "network": 2.409,
+    "ortools": 2.328,
+    "pyvrp": 2.228
+   }
+  },
+  {
+   "id": "RouteID_9c252578-61ad-4991-8da9-a5b134ab68c4",
+   "city": "Austin",
+   "stops": 116,
+   "hours": {
+    "driver": 2.168,
+    "ours": 1.881,
+    "network": 2.005,
+    "ortools": 1.968,
+    "pyvrp": 1.868
+   }
+  },
+  {
+   "id": "RouteID_8cbb9780-1709-43d6-9206-e27f8b89caae",
+   "city": "Boston",
+   "stops": 155,
+   "hours": {
+    "driver": 2.955,
+    "ours": 2.717,
+    "network": 2.859,
+    "ortools": 2.733,
+    "pyvrp": 2.61
+   }
+  },
+  {
+   "id": "RouteID_765919a4-7fbe-430c-ae16-ccb3a9300759",
+   "city": "Boston",
+   "stops": 74,
+   "hours": {
+    "driver": 2.13,
+    "ours": 1.824,
+    "network": 1.892,
+    "ortools": 1.809,
+    "pyvrp": 1.775
+   }
+  },
+  {
+   "id": "RouteID_7cb41ca7-5fd1-4063-8a15-4adf7744074c",
+   "city": "Boston",
+   "stops": 155,
+   "hours": {
+    "driver": 4.441,
+    "ours": 3.978,
+    "network": 4.107,
+    "ortools": 4.042,
+    "pyvrp": 3.93
+   }
+  },
+  {
+   "id": "RouteID_bf3fcc88-dbf3-4592-b29d-294acb412168",
+   "city": "Boston",
+   "stops": 144,
+   "hours": {
+    "driver": 3.935,
+    "ours": 3.383,
+    "network": 3.555,
+    "ortools": 3.467,
+    "pyvrp": 3.37
+   }
+  },
+  {
+   "id": "RouteID_7e196ac8-e2f8-4403-8e15-2969b80ac7fd",
+   "city": "Boston",
+   "stops": 79,
+   "hours": {
+    "driver": 1.956,
+    "ours": 1.847,
+    "network": 1.964,
+    "ortools": 1.791,
+    "pyvrp": 1.756
+   }
+  },
+  {
+   "id": "RouteID_b628d4aa-8ff3-40ec-830c-9d7a08475900",
+   "city": "Chicago",
+   "stops": 204,
+   "hours": {
+    "driver": 5.185,
+    "ours": 4.612,
+    "network": 4.894,
+    "ortools": 4.763,
+    "pyvrp": 4.513
+   }
+  },
+  {
+   "id": "RouteID_c23fafd4-2dc5-43d6-bc48-71d2f06e35fd",
+   "city": "Chicago",
+   "stops": 160,
+   "hours": {
+    "driver": 4.438,
+    "ours": 3.73,
+    "network": 4.045,
+    "ortools": 3.885,
+    "pyvrp": 3.656
+   }
+  },
+  {
+   "id": "RouteID_5048442a-7041-4614-84d1-aae57443750d",
+   "city": "Chicago",
+   "stops": 179,
+   "hours": {
+    "driver": 3.733,
+    "ours": 3.499,
+    "network": 3.577,
+    "ortools": 3.604,
+    "pyvrp": 3.451
+   }
+  },
+  {
+   "id": "RouteID_c9d4386d-f351-45ab-8a62-b359a77f1190",
+   "city": "Chicago",
+   "stops": 151,
+   "hours": {
+    "driver": 4.843,
+    "ours": 4.352,
+    "network": 4.515,
+    "ortools": 4.538,
+    "pyvrp": 4.377
+   }
+  },
+  {
+   "id": "RouteID_9c025a5c-8073-4e16-b642-c1bec776502b",
+   "city": "Chicago",
+   "stops": 195,
+   "hours": {
+    "driver": 4.798,
+    "ours": 4.608,
+    "network": 4.814,
+    "ortools": 4.805,
+    "pyvrp": 4.655
+   }
+  },
+  {
+   "id": "RouteID_c5bd4294-0e68-45e2-87db-d1c1b11cfb7a",
+   "city": "Los Angeles",
+   "stops": 128,
+   "hours": {
+    "driver": 3.591,
+    "ours": 3.228,
+    "network": 3.324,
+    "ortools": 3.253,
+    "pyvrp": 3.195
+   }
+  },
+  {
+   "id": "RouteID_c9268ea4-8d03-4ffc-8feb-261f50c639d6",
+   "city": "Los Angeles",
+   "stops": 153,
+   "hours": {
+    "driver": 3.19,
+    "ours": 2.914,
+    "network": 3.031,
+    "ortools": 2.924,
+    "pyvrp": 2.904
+   }
+  },
+  {
+   "id": "RouteID_273fbd6d-e20e-423c-b835-4aef0e7fcb0c",
+   "city": "Los Angeles",
+   "stops": 138,
+   "hours": {
+    "driver": 3.056,
+    "ours": 2.735,
+    "network": 2.868,
+    "ortools": 2.775,
+    "pyvrp": 2.721
+   }
+  },
+  {
+   "id": "RouteID_de9d3a12-ff93-43c8-9435-116bc6dc7842",
+   "city": "Los Angeles",
+   "stops": 152,
+   "hours": {
+    "driver": 3.32,
+    "ours": 2.876,
+    "network": 2.975,
+    "ortools": 2.971,
+    "pyvrp": 2.874
+   }
+  },
+  {
+   "id": "RouteID_050d93e7-7f06-4c97-8bf7-d96af3bcb6c9",
+   "city": "Los Angeles",
+   "stops": 139,
+   "hours": {
+    "driver": 2.35,
+    "ours": 2.111,
+    "network": 2.222,
+    "ortools": 2.217,
+    "pyvrp": 2.086
+   }
+  },
+  {
+   "id": "RouteID_303b89f9-c881-4f5a-8b4a-59a58090268f",
+   "city": "Seattle",
+   "stops": 163,
+   "hours": {
+    "driver": 3.62,
+    "ours": 3.378,
+    "network": 3.493,
+    "ortools": 3.394,
+    "pyvrp": 3.347
+   }
+  },
+  {
+   "id": "RouteID_80ba7546-404d-4a36-8361-3801d12f1683",
+   "city": "Seattle",
+   "stops": 152,
+   "hours": {
+    "driver": 4.448,
+    "ours": 4.04,
+    "network": 4.234,
+    "ortools": 4.178,
+    "pyvrp": 4.035
+   }
+  },
+  {
+   "id": "RouteID_786771c7-d0ea-459e-bc8b-b0431a024447",
+   "city": "Seattle",
+   "stops": 101,
+   "hours": {
+    "driver": 2.772,
+    "ours": 2.53,
+    "network": 2.655,
+    "ortools": 2.572,
+    "pyvrp": 2.516
+   }
+  },
+  {
+   "id": "RouteID_fdbbf4ec-6c6a-422d-b2d2-60fc5c4d3c30",
+   "city": "Seattle",
+   "stops": 90,
+   "hours": {
+    "driver": 1.833,
+    "ours": 1.611,
+    "network": 1.699,
+    "ortools": 1.628,
+    "pyvrp": 1.587
+   }
+  },
+  {
+   "id": "RouteID_105057c0-2006-4ea3-87f0-a7d795438684",
+   "city": "Seattle",
+   "stops": 147,
+   "hours": {
+    "driver": 3.851,
+    "ours": 3.542,
+    "network": 3.699,
+    "ortools": 3.674,
+    "pyvrp": 3.525
+   }
+  }
+ ],
+ "days": [
+  {
+   "id": "DCH2_2018-08-02",
+   "city": "Chicago",
+   "stops": 292,
+   "hours": {
+    "driver": 6.072,
+    "ours": 4.711,
+    "pyvrp": 5.036,
+    "savings": 5.364
+   }
+  },
+  {
+   "id": "DCH2_2018-08-10",
+   "city": "Chicago",
+   "stops": 1115,
+   "hours": {
+    "driver": 24.653,
+    "ours": 20.381,
+    "pyvrp": 19.609,
+    "savings": 22.65
+   }
+  },
+  {
+   "id": "DLA4_2018-07-21",
+   "city": "Los Angeles",
+   "stops": 849,
+   "hours": {
+    "driver": 18.233,
+    "ours": 16.912,
+    "pyvrp": 19.919,
+    "savings": 18.53
+   }
+  },
+  {
+   "id": "DLA5_2018-07-31",
+   "city": "Los Angeles",
+   "stops": 1156,
+   "hours": {
+    "driver": 28.696,
+    "ours": 26.135,
+    "pyvrp": 26.914,
+    "savings": 28.284
+   }
+  },
+  {
+   "id": "DLA9_2018-08-03",
+   "city": "Los Angeles",
+   "stops": 283,
+   "hours": {
+    "driver": 6.27,
+    "ours": 5.577,
+    "pyvrp": 7.279,
+    "savings": 6.128
+   }
+  },
+  {
+   "id": "DSE2_2018-08-01",
+   "city": "Seattle",
+   "stops": 409,
+   "hours": {
+    "driver": 8.132,
+    "ours": 6.841,
+    "pyvrp": 6.795,
+    "savings": 8.233
+   }
+  }
+ ]
+}

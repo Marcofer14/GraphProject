@@ -11,7 +11,8 @@ written here once. Three kinds of files:
 Demo routes are drawn at random per city from the phase-4 evaluation (not cherry-picked)::
 
     uv run nr-demo-export --results results/raw/route_evaluation_n200_phase4_*.parquet \\
-        --days results/raw/station-day_training_n6_fleet_*.parquet
+        --days results/raw/station-day_training_n6_fleet_*.parquet \\
+        --equal-time results/raw/route_evaluation_n200_equal_time_*.parquet
 """
 
 from __future__ import annotations
@@ -29,7 +30,7 @@ import pandas as pd
 
 from neural_routing.core import Solution, VRPInstance, evaluate
 from neural_routing.data.amazon import AmazonDataset
-from neural_routing.eval.benchmark import unavoidable_s
+from neural_routing.eval.benchmark import add_gaps, unavoidable_s
 from neural_routing.solvers import get_solver
 
 log = logging.getLogger(__name__)
@@ -46,6 +47,11 @@ ROUTE_SOLVERS = {
     f"attention@{CHECKPOINT}": ("network", "Network alone"),
     "ortools:10": ("ortools", "OR-Tools"),
     "pyvrp:10": ("pyvrp", "PyVRP"),
+}
+EQUAL_TIME_SOLVERS = {  # same budget as our model (nr-bench --tag equal_time)
+    "ortools:0.5": ("ortools_fast", "OR-Tools (0.5 s)"),
+    "pyvrp:0.5": ("pyvrp_fast", "PyVRP (0.5 s)"),
+    "pyvrp:1": ("pyvrp_1s", "PyVRP (1 s)"),
 }
 DAY_SOLVERS = {
     "reference": ("driver", "Real drivers"),
@@ -204,9 +210,14 @@ def export_days(days: pd.DataFrame, split: str, out: Path) -> list[Json]:
 
 
 def headline(df: pd.DataFrame) -> dict[str, Any]:
-    """Means over all 200 evaluation routes, not just the demo ones."""
+    """Means over all evaluation routes (not just the demo ones), and on how many routes our
+    model is strictly better than each other solver (by more than half a second)."""
+    travel = df.pivot_table(index="instance", columns="config", values="travel_time_s")
+    ours = travel[next(c for c, (k, _) in ROUTE_SOLVERS.items() if k == "ours")]
     out = {}
-    for cfg, (key, label) in ROUTE_SOLVERS.items():
+    for cfg, (key, label) in (ROUTE_SOLVERS | EQUAL_TIME_SOLVERS).items():
+        if cfg not in travel:
+            continue
         g = df[df["config"] == cfg]
         out[key] = {
             "label": label,
@@ -215,6 +226,8 @@ def headline(df: pd.DataFrame) -> dict[str, Any]:
             "late_pct": round(100 * float(g["tw_violations"].sum() / g["num_customers"].sum()), 2),
             "runtime_s": round(float(g["runtime_s"].median()), 3),
         }
+        if key != "ours":
+            out[key]["ours_wins"] = int((ours < travel[cfg] - 0.5).sum())
     return {"routes": int(df["instance"].nunique()), "solvers": out}
 
 
@@ -230,11 +243,23 @@ def main() -> None:
     parser.add_argument("--limits", type=float, nargs="+", default=[0.5, 1.0, 2.0, 5.0])
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--workers", type=int, default=4)
+    parser.add_argument("--equal-time", type=Path, default=None, help="equal-time route parquet")
+    parser.add_argument("--index-only", action="store_true",
+                        help="only rewrite the headline in an existing index.json")  # fmt: skip
     parser.add_argument("--out", type=Path, default=Path("web/public/data"))
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     df = pd.read_parquet(args.results)
+    if args.equal_time:  # same routes, more configs: gaps against the best of all of them
+        extra = pd.read_parquet(args.equal_time)
+        df = add_gaps(pd.concat([df, extra]).drop(columns=["gap_pct", "gap_ctrl_pct"]))
+    if args.index_only:
+        path = args.out / "index.json"
+        index = json.loads(path.read_text()) | {"headline": headline(df)}
+        path.write_text(json.dumps(index, indent=1))
+        log.info("headline rewritten in %s", path)
+        return
     ids = pick_routes(df, args.per_city, args.seed)
     log.info("exporting %d routes: %s", len(ids), ids)
     args.out.mkdir(parents=True, exist_ok=True)

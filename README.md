@@ -236,6 +236,15 @@ uv run nr-bench-synth --problem cvrp --size 20 --configs savings ortools:1 pyvrp
 uv run pytest && uv run ruff check . && uv run mypy
 ```
 
+**Web demo** (phase 6, `web/`): a static page that replays real routes on a map and compares
+the solvers. Its data is precomputed with `uv run nr-demo-export ...` (see the module docstring)
+into `web/public/data`, so the page itself computes nothing.
+
+```bash
+npm --prefix web install
+npm --prefix web run dev   # http://localhost:5173/GraphProject/
+```
+
 **HTTP API** (phase 5): `uv run nr-api`, then open http://127.0.0.1:8000/docs.
 
 | Endpoint | Does |

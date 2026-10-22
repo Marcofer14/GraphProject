@@ -20,3 +20,7 @@ htmlcov/
 *.egg-info/
 dist/
 wandb/
+
+# web demo
+web/node_modules/
+web/dist/

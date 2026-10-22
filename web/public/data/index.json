@@ -8,7 +8,8 @@
     "travel_h": 3.279,
     "gap_ctrl_pct": 22.22,
     "late_pct": 0.09,
-    "runtime_s": 0.0
+    "runtime_s": 0.0,
+    "ours_wins": 199
    },
    "ours": {
     "label": "Our model",
@@ -22,21 +23,48 @@
     "travel_h": 3.084,
     "gap_ctrl_pct": 10.36,
     "late_pct": 0.02,
-    "runtime_s": 0.425
+    "runtime_s": 0.425,
+    "ours_wins": 191
    },
    "ortools": {
     "label": "OR-Tools",
     "travel_h": 2.991,
     "gap_ctrl_pct": 5.05,
     "late_pct": 0.0,
-    "runtime_s": 10.005
+    "runtime_s": 10.005,
+    "ours_wins": 161
    },
    "pyvrp": {
     "label": "PyVRP",
     "travel_h": 2.904,
     "gap_ctrl_pct": 0.38,
     "late_pct": 0.0,
-    "runtime_s": 10.037
+    "runtime_s": 10.037,
+    "ours_wins": 37
+   },
+   "ortools_fast": {
+    "label": "OR-Tools (0.5 s)",
+    "travel_h": 3.149,
+    "gap_ctrl_pct": 13.0,
+    "late_pct": 0.09,
+    "runtime_s": 0.504,
+    "ours_wins": 187
+   },
+   "pyvrp_fast": {
+    "label": "PyVRP (0.5 s)",
+    "travel_h": 2.942,
+    "gap_ctrl_pct": 2.23,
+    "late_pct": 0.0,
+    "runtime_s": 0.529,
+    "ours_wins": 110
+   },
+   "pyvrp_1s": {
+    "label": "PyVRP (1 s)",
+    "travel_h": 2.923,
+    "gap_ctrl_pct": 1.34,
+    "late_pct": 0.0,
+    "runtime_s": 1.032,
+    "ours_wins": 70
    }
   }
  },

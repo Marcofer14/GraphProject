@@ -3,7 +3,7 @@
 // back to Cloudflare Workers AI (free daily allowance) when Groq is unavailable or out of quota.
 
 import knowledge from "../knowledge.md";
-import { chunks, prompt, RateLimiter, validate } from "./core";
+import { chunks, onTopic, prompt, RateLimiter, refusal, validate } from "./core";
 
 interface Ai {
   run(model: string, input: unknown): Promise<unknown>;
@@ -96,6 +96,12 @@ export default {
     }
     const checked = validate(body);
     if ("error" in checked) return json({ error: checked.error }, 400, headers);
+
+    // off-topic questions are answered here, without spending model tokens
+    const question = checked.messages.at(-1)!.content;
+    if (!onTopic(ALL, question, checked.messages.length > 1)) {
+      return json({ answer: refusal(question), source: "guard" }, 200, headers);
+    }
 
     const messages = prompt(ALL, checked.messages);
     const groq = await askGroq(env, messages);

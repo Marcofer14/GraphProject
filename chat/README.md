@@ -6,7 +6,9 @@ enough for free tiers), and answers with Groq's free tier, falling back to Cloud
 free daily allowance. If both are unavailable the page answers from its prepared FAQ.
 
 Limits: 20 questions per visitor per 10 minutes (per Worker instance), questions under 600
-characters, conversations under 12 messages, answers under 350 tokens, and only requests from the
+characters, conversations under 12 messages, answers under 350 tokens, only questions about the
+project (a word-overlap guard refuses the rest without calling a model, and the prompt refuses
+what slips through), and only requests from the
 demo's origin.
 
 ## Deploy (once)

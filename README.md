@@ -21,34 +21,37 @@ benchmarked against OR-Tools, PyVRP and **real delivery drivers** on ~9,000 Amaz
 | 1 | Baselines (NN, Clarke-Wright, OR-Tools, PyVRP) + evaluator + benchmark | ✅ |
 | 2 | Attention Model + POMO (REINFORCE) on TSP/CVRP, neural solver, synthetic benchmark | ✅ |
 | 3 | Calibrated generator, customer-centric normalisation, time windows, local search, size curriculum, real-route evaluation | ✅ |
-| 4 | Real asymmetric travel times (MatNet-style), fine-tuning, ONNX | |
-| 5–7 | FastAPI + OSRM backend, Next.js/deck.gl frontend, deployment | |
+| 4 | Matrix-aware attention trained on real routes, driver-similarity score, 2.5x faster inference, whole-day fleet planning | ✅ |
+| 5–7 | API (done) · Next.js map demo · deployment | ⏳ |
 
 ## Headline: 200 unseen real Amazon routes
 
 Evaluation split (routes never seen by the generator or any model), ~150 stops each, real
 asymmetric travel-time matrices and real time windows. The *controllable* gap excludes the
-unavoidable station round trip (~75 % of every route); see ADR-012.
+unavoidable station round trip (~75 % of every route; ADR-012). *Driver score* is the Amazon
+challenge's similarity to the driver's sequence (0 = identical; ADR-018).
 
-| Solver | Hours / route | Gap | Controllable gap | Late stops | Runtime |
+| Solver | Hours / route | Controllable gap | Driver score | Late stops | Runtime |
 |---|---|---|---|---|---|
-| PyVRP (10 s) | 2.90 | 0.25 % | 0.36 % | 0 % | 10 s |
-| **Attention (Amazon, 100) + local search** | **2.98** | **2.91 %** | **4.32 %** | 0.07 % | **0.9 s** |
-| OR-Tools (10 s) | 2.99 | 3.28 % | 4.98 % | 0 % | 10 s |
-| Savings + local search | 3.01 | 4.14 % | 6.51 % | 0.44 % | 0.01 s |
-| **Real driver** | 3.28 | 13.96 % | 22.2 % | 0.09 % | — |
-| Attention (Amazon, 150) without local search | 3.61 | 24.73 % | 37.93 % | 0.25 % | 0.8 s |
+| PyVRP (10 s) | 2.90 | 0.38 % | 0.07 | 0 % | 10 s |
+| **Matrix-aware attention + local search (phase 4)** | **2.94** | **2.86 %** | 0.07 | 0.01 % | **0.5 s** |
+| Coordinate-only attention + local search (phase 3) | 2.98 | 4.33 % | 0.07 | 0.07 % | 0.5 s |
+| OR-Tools (10 s) | 2.99 | 5.05 % | 0.08 | 0 % | 10 s |
+| Matrix-aware attention, network alone | 3.08 | 10.36 % | 0.07 | 0.02 % | 0.4 s |
+| **Real driver** | 3.28 | 22.22 % | 0 | 0.09 % | — |
+| Coordinate-only attention, network alone | 3.61 | 38.09 % | 0.09 | 0.26 % | 0.4 s |
 
-* The hybrid cuts **9 % of driving time against the real drivers** (3.28 h → 2.98 h per route) and
-  beats OR-Tools given 10 s in under a second.
-* On real roads **the network alone is weak** (38 % controllable gap vs ~3.6 % on synthetic
-  Amazon-like data): it reasons on straight-line geometry while real streets are asymmetric and
-  indirect, and local search on the real matrix recovers most of the gap. Feeding the real matrix
-  to the encoder is the goal of phase 4.
-* Size curriculum (50 → 100 → 150, ADR-016): the 100-stop model is best (4.32 %); the 150 stage
-  did not improve on it. Real time windows are never a problem (≤ 0.13 % late stops).
+* The hybrid cuts **10.4 % of driving time against the real drivers** (3.28 h → 2.94 h per route)
+  and beats OR-Tools given 10 s by a wide margin (2.86 % vs 5.05 %) in half a second, with routes
+  as driver-like as PyVRP's and almost no late stops.
+* **Seeing the street network is what mattered** (phase 4, ADR-017): straight-line coordinates get
+  a third of each stop's nearest neighbours wrong. Adding learned attention biases from the real
+  travel-time matrix and training on real route slices took the network alone from 38.1 % to
+  10.4 % and the hybrid from 4.33 % to 2.86 %. Fine-tuning the coordinate model on synthetic data
+  instead made it slightly worse on real routes (4.86 %).
 
-Full table with every model: [`results/route_evaluation_n200_final.md`](results/route_evaluation_n200_final.md).
+Full tables: [`results/route_evaluation_n200_phase4.md`](results/route_evaluation_n200_phase4.md),
+phase 3: [`results/route_evaluation_n200_final.md`](results/route_evaluation_n200_final.md).
 
 **Whole station-days** (6 real days, ~5 vans each; ADR-020): clustering the day into vans and
 routing each with the matrix-aware network gives **13.43 fleet hours per day vs 15.34 for the real

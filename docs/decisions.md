@@ -197,6 +197,14 @@ Changes:
 * Inference passes the instance's matrix in the training unit (calibrated speed x box size).
 * Config `cvrp100_real_matrix` (from `cvrp100_pomo_amazon`, lr 5e-5, 500 validation slices).
 
+**Result** (40 epochs, ~1 h 45 min, validation on held-out real slices 38.09 → 33.40 and still
+falling; 200 evaluation routes): network alone **38.09 % → 10.36 %** controllable gap; network +
+local search **4.33 % → 2.86 %** (OR-Tools 10 s: 5.05 %, PyVRP 10 s: 0.38 %, drivers: 22.22 %),
+driver score unchanged (0.07), late stops 0.01 %, 0.5 s per route. A control run that fine-tuned
+the coordinate-only model on synthetic data with a lower learning rate got slightly *worse* on real
+routes (4.86 %): the gain comes from the matrix and the real data, not from more training.
+`cvrp100_pomo_real` is the phase-4 reference model.
+
 ## ADR-018 · Driver-similarity score (the Amazon challenge metric) (2026-10-22)
 Travel time alone cannot tell whether a shorter route is *reasonable*. `core/driver_score.py`
 re-implements the challenge's scoring rule: sequence deviation (how far each next stop jumps in

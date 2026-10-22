@@ -26,8 +26,11 @@ flowchart LR
     B4 --> F4
 ```
 
-**Status 2026-10-22:** 5.1 API ✅ · 4.1–4.2 matrix-aware model + real-slice data ✅ (ADR-017) ·
-4.3 training ready (`cvrp100_real_matrix`, VS Code task) · demo moved to the end of the plan.
+**Status 2026-10-22:** phase 4 ✅ — matrix-aware model trained on real routes (network alone
+38.1 % → 10.4 %, hybrid 4.33 % → 2.86 %, ADR-017), driver-similarity score (ADR-018), 2.5x faster
+inference (ADR-019), whole-day fleet planning −12.5 % hours vs drivers (ADR-020) · 5.1 API ✅ ·
+next: the demo (6.x) and deployment, then optional extras (5.2–5.4, continued training,
+zone-aware imitation of drivers).
 
 | Step | Needs | Delivers |
 |---|---|---|

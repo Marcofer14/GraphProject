@@ -38,7 +38,7 @@ from neural_routing.solvers import get_solver
 log = logging.getLogger(__name__)
 
 # solvers that run on the GPU in the main process (one model load, no per-worker CUDA context)
-NEURAL = {"attention", "attention_greedy", "attention_ls"}
+NEURAL = {"attention", "attention_greedy", "attention_ls", "cluster_attention_ls"}
 
 
 def parse_config(cfg: str) -> tuple[str, float]:
@@ -182,18 +182,25 @@ def main() -> None:
                 for rid in tqdm(ids, desc="neural"):
                     rows += run_instance(ds.route_instance(str(rid)), neural, kwargs)
         else:
-            if neural:
-                raise SystemExit("neural solvers are supported in --mode route only")
             model = ds.fit_travel_model(seed=args.seed)
             log.info("travel model: %.1f s + %.1f s/km", model.intercept, model.slope)
             days = ds.station_days()
             if args.max_stops:
                 days = days[days["num_stops"] <= args.max_stops]
             days = days.sample(n=min(args.n, len(days)), random_state=args.seed)
-            futures = [
-                pool.submit(_station_day_job, args.split, str(st), str(date), model, args.configs)
+            pairs = [
+                (str(st), str(date))
                 for st, date in zip(days["station_code"], days["date"], strict=True)
             ]
+            futures = [
+                pool.submit(_station_day_job, args.split, st, date, model, classic)
+                for st, date in pairs
+            ]
+            if neural:  # GPU, main process, while the pool works on the classic solvers
+                kwargs = neural_kwargs(neural, args.checkpoint)
+                for st, date in tqdm(pairs, desc="neural"):
+                    inst = ds.station_day_instance(st, date, model)
+                    rows += run_instance(inst, neural, kwargs)
         rows += [row for f in tqdm(as_completed(futures), total=len(futures)) for row in f.result()]
 
     df = add_gaps(pd.DataFrame(rows))

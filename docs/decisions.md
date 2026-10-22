@@ -227,6 +227,29 @@ Result on 10 real routes: network 953 -> 356 ms (2.7x), network + local search 1
 (2.5x), same answers; a 32 x 100 training step 0.81 -> 0.68 s. `torch.compile` / CUDA graphs were
 not needed for the demo's latency target and are left out (fragile on Windows).
 
+## ADR-020 · Whole station-days: cluster first, route with the network (2026-10-22)
+`solvers/cluster.py` plans a station-day for the real fleet: a capacitated k-means (k-means++,
+regret-ordered assignment that never exceeds a van's volume) splits the stops into one group per
+van, each group is routed as a one-van instance by the neural hybrid on its travel-time
+sub-matrix, and the multi-route local search then moves stops between vans when it helps.
+`cluster_savings_ls` (same clustering and polish, savings per group) is the control.
+
+Same 6 station-days as phase 1 (≤ 1,200 stops, ~5 vans, cross-route times estimated, ADR-005):
+
+| Solver | Fleet hours / day | Gap | Late stops | Runtime |
+|---|---|---|---|---|
+| Cluster + network with real matrix (ADR-017) | **13.43** | 0.77 % | 0.27 % | 2 s |
+| Cluster + phase-3 network | 13.57 | 2.13 % | 0.44 % | 2.7 s |
+| Cluster + savings/LS (control) | 13.64 | 2.64 % | 0.97 % | 0.6 s |
+| PyVRP (60 s) | 14.26 | 9.69 % | 0 % | 60 s |
+| Real drivers | 15.34 | 17.39 % | 0.10 % | — |
+
+The day plan saves **12.5 % of fleet hours against the drivers** with the same vans in 2 s. Most of
+the advantage over PyVRP comes from the decomposition (PyVRP does not converge on ~1,000 stops in
+60 s; the control already beats it); the network adds 1.5 % fewer hours and less than half the
+late stops of the control, and the matrix-aware model beats the phase-3 one. Six days is a small
+sample and lateness is slightly above the drivers', so these numbers are indicative.
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

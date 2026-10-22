@@ -1,4 +1,5 @@
 from neural_routing.solvers import (  # noqa: F401  (registration)
+    cluster,
     heuristics,
     local_search,
     neural,

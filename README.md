@@ -50,6 +50,10 @@ unavoidable station round trip (~75 % of every route); see ADR-012.
 
 Full table with every model: [`results/route_evaluation_n200_final.md`](results/route_evaluation_n200_final.md).
 
+**Whole station-days** (6 real days, ~5 vans each; ADR-020): clustering the day into vans and
+routing each with the matrix-aware network gives **13.43 fleet hours per day vs 15.34 for the real
+drivers (−12.5 %)** and 14.26 for PyVRP given 60 s, in 2 s per day.
+
 ## Baseline results
 
 See [`results/`](results/) for the generated tables. Gap is relative to the best solution found

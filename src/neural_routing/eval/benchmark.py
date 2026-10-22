@@ -38,7 +38,7 @@ from neural_routing.solvers import get_solver
 log = logging.getLogger(__name__)
 
 # solvers that run on the GPU in the main process (one model load, no per-worker CUDA context)
-NEURAL = {"attention", "attention_greedy", "attention_ls", "cluster_attention_ls"}
+NEURAL = {"attention", "attention_greedy", "attention_ls", "attention_ils", "cluster_attention_ls"}
 
 
 def parse_config(cfg: str) -> tuple[str, float]:

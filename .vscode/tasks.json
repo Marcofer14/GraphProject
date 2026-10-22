@@ -28,6 +28,27 @@
             "presentation": { "panel": "dedicated", "reveal": "always" }
         },
         {
+            "label": "Phase 4b: continue REAL training to 100 epochs (~2.5 h)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "cvrp100_real_matrix_long"],
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
+            "label": "Phase 4b: evaluate the longer model on 200 real routes (~15 min)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.eval.benchmark", "--mode", "route", "--split",
+                     "evaluation", "--n", "200", "--workers", "6", "--tag", "phase4b", "--configs",
+                     "reference", "pyvrp:1", "pyvrp:10",
+                     "attention_ls@checkpoints/cvrp100_pomo_real.pt",
+                     "attention_ls@checkpoints/cvrp100_pomo_real_long.pt",
+                     "attention@checkpoints/cvrp100_pomo_real_long.pt",
+                     "attention_ils@checkpoints/cvrp100_pomo_real_long.pt:1"],
+            "problemMatcher": []
+        },
+        {
             "label": "Phase 4: evaluate on 200 real routes (vs phase 3)",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/Scripts/python.exe",

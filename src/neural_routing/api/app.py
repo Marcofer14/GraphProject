@@ -46,6 +46,7 @@ DESCRIPTIONS = {
     "attention": "Attention model + POMO, multi-start x8 augmentation",
     "attention_ls": "Attention model + POMO + local search (the hybrid)",
     "attention_greedy": "Attention model, single greedy rollout",
+    "attention_ils": "The hybrid, then iterated local search until the time limit (anytime)",
 }
 
 

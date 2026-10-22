@@ -1,10 +1,18 @@
+import time
+
 import numpy as np
 import pytest
 
 from neural_routing.core import Solution, VRPInstance, evaluate
 from neural_routing.data.synthetic import random_instance
 from neural_routing.solvers import get_solver
-from neural_routing.solvers.local_search import improve_routes, polish, split_giant_tour
+from neural_routing.solvers.local_search import (
+    double_bridge,
+    improve_routes,
+    iterated_local_search,
+    polish,
+    split_giant_tour,
+)
 
 
 def asymmetric(inst: VRPInstance, seed: int) -> VRPInstance:
@@ -97,3 +105,24 @@ def test_ls_solvers_improve_their_base(base: str) -> None:
     polished = evaluate(inst, get_solver(f"{base}_ls").solve(inst))
     assert polished.is_complete and polished.capacity_excess == 0
     assert polished.travel_time_s < plain
+
+
+def test_double_bridge_keeps_the_stops() -> None:
+    rng = np.random.default_rng(0)
+    tour = list(range(1, 121))
+    for _ in range(50):
+        kicked = double_bridge(tour, rng, span=30)
+        assert sorted(kicked) == tour and kicked != tour
+    assert double_bridge([1, 2, 3], rng) == [1, 2, 3]  # too short to kick
+
+
+@pytest.mark.parametrize("seed", [0, 1])
+def test_iterated_local_search_improves_on_polish_within_the_deadline(seed: int) -> None:
+    inst = asymmetric(random_instance(60, seed=seed), seed)
+    start = polish(inst, random_routes(inst, seed))
+    t0 = time.perf_counter()
+    out = iterated_local_search(inst, start, deadline=t0 + 0.5, seed=seed)
+    assert time.perf_counter() - t0 < 1.5  # stops at the deadline (one last polish may run)
+    before, after = (evaluate(inst, Solution.from_lists(r)) for r in (start, out))
+    assert after.is_complete and after.capacity_excess <= before.capacity_excess + 1e-9
+    assert after.travel_time_s <= before.travel_time_s + 1e-6

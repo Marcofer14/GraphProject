@@ -9,6 +9,7 @@ which keeps the result honest when the matrix is not Euclidean.
 from __future__ import annotations
 
 import math
+import time
 from functools import cache
 from pathlib import Path
 
@@ -203,6 +204,29 @@ class AttentionLSSolver(AttentionSolver):
         self, checkpoint: str | Path | None = None, device: str | None = None, polish_top: int = 8
     ) -> None:
         super().__init__(checkpoint, device=device, polish_top=polish_top)
+
+
+@register("attention_ils")
+class AttentionILSSolver(AttentionSolver):
+    """The hybrid, then iterated local search until the time limit: an anytime version that can
+    be compared with OR-Tools and PyVRP at equal computing time."""
+
+    def __init__(
+        self,
+        checkpoint: str | Path | None = None,
+        device: str | None = None,
+        polish_top: int = 8,
+        seed: int = 0,
+    ) -> None:
+        super().__init__(checkpoint, device=device, polish_top=polish_top)
+        self.seed = seed
+
+    def _solve(self, instance: VRPInstance, time_limit: float) -> list[list[int]]:
+        from neural_routing.solvers.local_search import iterated_local_search
+
+        deadline = time.perf_counter() + time_limit
+        routes = super()._solve(instance, time_limit)
+        return iterated_local_search(instance, routes, deadline, self.tw_penalty, self.seed)
 
 
 @register("attention_greedy")

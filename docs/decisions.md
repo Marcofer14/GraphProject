@@ -258,6 +258,30 @@ the advantage over PyVRP comes from the decomposition (PyVRP does not converge o
 late stops of the control, and the matrix-aware model beats the phase-3 one. Six days is a small
 sample and lateness is slightly above the drivers', so these numbers are indicative.
 
+## ADR-021 · Anytime hybrid: iterated local search until the time limit
+**Context.** At equal computing time PyVRP beat the hybrid on average (0.5 s: 2.23 % vs 2.86 %
+controllable gap), because the hybrid stops at its first local optimum after ~0.5 s while PyVRP
+keeps searching. Comparing a one-shot method with anytime solvers also made the race unfair in
+both directions.
+
+**Decision.** `attention_ils` runs the hybrid, then repeats until the time limit: a local
+double-bridge kick (three cuts inside a 50-position window, reconnected A C B, which 2-opt and
+or-opt cannot undo in one move), the same 2-opt / or-opt / swap descent, and acceptance only if
+the result is better (less capacity excess, then travel + 10 x lateness, the neural ranking).
+No training; the network supplies a strong start and the search uses the rest of the budget.
+
+**Result** (200 unseen real routes, gaps against the best route of every run so far):
+
+| Budget | Hybrid + ILS | PyVRP | Hybrid better on | OR-Tools |
+|---|---|---|---|---|
+| 1 s | **1.53 %** | 1.66 % | 123 of 200 routes (70 worse) | 9.23 % |
+| 2 s | **1.07 %** | 1.33 % | 133 of 200 routes (59 worse) | 8.15 % |
+
+At equal time the hybrid is now ahead of PyVRP on average, on the 90th percentile and on most
+routes; with 2 s it wins as many routes as PyVRP given 10 s (93 vs 96), though PyVRP's 10 s
+average is still better (0.70 %). Caveat: the network's ~0.4 s runs on a GTX 1660 Super GPU,
+while the search and both classical solvers use one CPU core each.
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

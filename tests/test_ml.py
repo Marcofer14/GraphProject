@@ -105,8 +105,8 @@ def test_train_and_neural_solver_end_to_end(problem: str, tmp_path) -> None:  # 
 
     cap = np.inf if problem == "tsp" else default_capacity(8)
     inst = random_instance(8, seed=3, capacity=cap)
-    for name in ["attention", "attention_greedy", "attention_ls"]:
-        sol = get_solver(name, checkpoint=ckpt, device="cpu").solve(inst)
+    for name in ["attention", "attention_greedy", "attention_ls", "attention_ils"]:
+        sol = get_solver(name, checkpoint=ckpt, device="cpu").solve(inst, time_limit=0.2)
         m = evaluate(inst, sol)
         assert m.is_complete and m.capacity_excess == 0
 
@@ -130,6 +130,18 @@ def test_training_resumes_from_last_checkpoint(tmp_path) -> None:  # type: ignor
     history = json.loads((tmp_path / "run2" / "history.json").read_text())
     assert [h["epoch"] for h in history] == [0, 1, 2]
     assert history[-1]["step"] == 6
+
+    # a continuation under another name starts from that state and leaves the original alone
+    ckpt = tmp_path / "ckpt"
+    (last,) = ckpt.glob("*_last.pt")
+    original = last.read_bytes()
+    cfg.train.update(epochs=4, run_dir=str(tmp_path / "run3"), tag="longer")
+    cfg.train.continue_from = str(last)
+    train(cfg)
+    history = json.loads((tmp_path / "run3" / "history.json").read_text())
+    assert [h["epoch"] for h in history] == [0, 1, 2, 3]
+    assert (ckpt / "longer_last.pt").exists()
+    assert last.read_bytes() == original
 
 
 def test_early_stopping_counts_only_significant_improvements() -> None:

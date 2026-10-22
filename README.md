@@ -49,13 +49,21 @@ challenge's similarity to the driver's sequence (0 = identical; ADR-018).
   travel-time matrix and training on real route slices took the network alone from 38.1 % to
   10.4 % and the hybrid from 4.33 % to 2.86 %. Fine-tuning the coordinate model on synthetic data
   instead made it slightly worse on real routes (4.86 %).
-* **At equal time PyVRP is still ahead.** Given 0.5 s it reaches 2.23 % (our hybrid wins on 110 of
-  the 200 routes but has a heavier tail) and 1.34 % with 1 s; OR-Tools gets 13.0 % in 0.5 s, so
-  against it the hybrid wins on 187 of 200 routes. Our runtimes are on a GTX 1660 Super; on CPU
-  the hybrid takes a median 1.8 s (0.4–4.5 s, 25 routes).
+* **At equal time, the anytime version beats PyVRP** (ADR-021). The one-shot hybrid stops after
+  ~0.5 s, where PyVRP is ahead (2.23 % vs 2.86 %). Letting it keep searching with iterated local
+  search until the budget runs out gives, measured against the best route of every run:
+
+  | Budget | Hybrid + ILS | PyVRP | Hybrid better on | OR-Tools |
+  |---|---|---|---|---|
+  | 1 s | **1.53 %** | 1.66 % | 123 of 200 routes | 9.23 % |
+  | 2 s | **1.07 %** | 1.33 % | 133 of 200 routes | 8.15 % |
+
+  PyVRP given 10 s is still better on average (0.70 %). The network's ~0.4 s runs on a GTX 1660
+  Super GPU (median 1.8 s on CPU); the search and both classical solvers use one CPU core.
 
 Full tables: [`results/route_evaluation_n200_phase4.md`](results/route_evaluation_n200_phase4.md),
-equal time: [`results/route_evaluation_n200_equal_time.md`](results/route_evaluation_n200_equal_time.md),
+equal time: [`results/route_evaluation_n200_equal_time.md`](results/route_evaluation_n200_equal_time.md)
+and [`results/route_evaluation_n200_ils.md`](results/route_evaluation_n200_ils.md),
 phase 3: [`results/route_evaluation_n200_final.md`](results/route_evaluation_n200_final.md).
 
 **Whole station-days** (6 real days, ~5 vans each; ADR-020): clustering the day into vans and

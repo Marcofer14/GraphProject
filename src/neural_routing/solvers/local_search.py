@@ -19,6 +19,7 @@ kept only if it is not later than the input (see :func:`polish`).
 from __future__ import annotations
 
 import math
+import time
 
 import numpy as np
 from numba import njit
@@ -192,6 +193,48 @@ def polish(
     if worse_tw or after.travel_time_s > before.travel_time_s + 1e-6:
         return routes
     return new
+
+
+def double_bridge(tour: list[int], rng: np.random.Generator, span: int = 50) -> list[int]:
+    """Cut three stretches inside a window of ``span`` positions and reconnect them A C B.
+    2-opt and or-opt cannot undo this in one move, so polishing lands in a new local optimum;
+    keeping the window small keeps the kick local (and the re-polish cheap) on long tours."""
+    n = len(tour)
+    if n < 8:
+        return list(tour)
+    w = min(span, n)
+    start = int(rng.integers(0, n - w + 1))
+    a, b, c = sorted(int(x) for x in rng.choice(np.arange(start + 1, start + w), 3, replace=False))
+    return tour[:a] + tour[b:c] + tour[a:b] + tour[c:]
+
+
+def iterated_local_search(
+    instance: VRPInstance,
+    routes: list[list[int]],
+    deadline: float,
+    tw_penalty: float = 10.0,
+    seed: int = 0,
+    max_moves: int = 100_000,
+) -> list[list[int]]:
+    """Kick the best solution with :func:`double_bridge`, re-polish it and keep it if it is
+    better, until ``deadline`` (a ``time.perf_counter()`` value). Better means less capacity
+    excess first, then less travel + ``tw_penalty`` x lateness, as the neural solver ranks."""
+
+    def key(rs: list[list[int]]) -> tuple[float, float]:
+        m = evaluate(instance, Solution.from_lists(rs))
+        return (round(m.capacity_excess, 9), m.travel_time_s + tw_penalty * m.lateness_s)
+
+    rng = np.random.default_rng(seed)
+    best = [list(r) for r in routes]
+    best_key = key(best)
+    while time.perf_counter() < deadline:
+        inner = Solution.from_lists(best).giant_tour()[1:-1]  # depot separators stay inside
+        kicked = split_giant_tour(np.array([0, *double_bridge(inner, rng), 0], dtype=np.int64))
+        candidate, _ = improve_routes(instance, kicked, max_moves)
+        candidate_key = key(candidate)
+        if candidate_key < best_key:
+            best, best_key = candidate, candidate_key
+    return best
 
 
 class LocalSearchSolver(Solver):

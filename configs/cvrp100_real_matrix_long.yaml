@@ -1,0 +1,15 @@
+# Continue the phase-4 real-matrix training (ADR-017) past its 40 epochs: validation was still
+# improving (38.09 -> 33.40). It resumes the last state of cvrp100_pomo_real (weights, optimizer,
+# epoch, history) but saves under its own name, so the reference model the demo and the
+# benchmarks use (checkpoints/cvrp100_pomo_real.pt) is never overwritten. Relaunching after an
+# interruption continues from cvrp100_pomo_real_long_last.pt.
+defaults:
+  - cvrp100_real_matrix
+  - _self_
+
+train:
+  tag: cvrp100_pomo_real_long
+  continue_from: checkpoints/cvrp100_pomo_real_last.pt
+  epochs: 100
+  early_stopping:
+    patience: 10

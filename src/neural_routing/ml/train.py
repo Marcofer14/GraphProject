@@ -257,6 +257,9 @@ def train(cfg: DictConfig) -> Path:
 
     resume = t_cfg.get("resume")
     resume_path = ckpt_dir / f"{tag}_last.pt" if resume == "auto" else resume and Path(resume)
+    if resume == "auto" and not resume_path.exists() and t_cfg.get("continue_from"):
+        # first launch of a continuation: pick up another run's last state, save under `tag`
+        resume_path = Path(t_cfg.continue_from)
     if resume_path and resume_path.exists():
         ckpt = torch.load(resume_path, map_location=device, weights_only=False)
         policy.load_state_dict(ckpt["state_dict"])

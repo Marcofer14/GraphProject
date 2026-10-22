@@ -1,15 +1,16 @@
 import type { Map as MLMap } from "maplibre-gl";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 
 import { ROUTE_CHOICES, SOLVERS } from "../data";
-import { clock, hours, seconds } from "../format";
+import { hours, seconds } from "../format";
 import { endTime, tracks } from "../playback";
 import type { Listing, RouteDoc } from "../types";
+import { usePlayback } from "../usePlayback";
 import { useSyncedCameras } from "../useSyncedCameras";
+import { ReplayControls } from "./ReplayControls";
 import { RouteMap } from "./RouteMap";
 import { RoutePicker } from "./RoutePicker";
 
-const PLAY_SECONDS = 14; // a whole shift replays in this many seconds
 const NEURAL = new Set(["ours", "network"]);
 
 interface PanelProps {
@@ -89,46 +90,15 @@ interface Props {
 export function RouteCompare({ routes, routeId, onRoute, doc, dark }: Props) {
   const [left, setLeft] = useState("driver");
   const [right, setRight] = useState("ours");
-  const [time, setTime] = useState(Infinity);
-  const [playing, setPlaying] = useState(false);
   const [mapA, setMapA] = useState<MLMap | null>(null);
   const [mapB, setMapB] = useState<MLMap | null>(null);
   useSyncedCameras([mapA, mapB]);
-
-  useEffect(() => {
-    setTime(Infinity);
-    setPlaying(false);
-  }, [doc]);
 
   const end = useMemo(() => {
     if (!doc) return 0;
     return Math.max(...[left, right].map((k) => endTime(tracks(doc.depot, doc.stops, doc.solvers[k]))));
   }, [doc, left, right]);
-
-  const frame = useRef(0);
-  useEffect(() => {
-    if (!playing) return;
-    let last = performance.now();
-    const tick = (now: number) => {
-      const dt = (now - last) / 1000;
-      last = now;
-      let done = false;
-      setTime((t) => {
-        const next = (Number.isFinite(t) ? t : 0) + (dt * end) / PLAY_SECONDS;
-        done = next >= end;
-        return done ? Infinity : next;
-      });
-      if (done) setPlaying(false);
-      else frame.current = requestAnimationFrame(tick);
-    };
-    frame.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame.current);
-  }, [playing, end]);
-
-  const play = () => {
-    if (!Number.isFinite(time)) setTime(0);
-    setPlaying((p) => !p);
-  };
+  const { time, playing, toggle, seek } = usePlayback(end, doc);
 
   return (
     <section className="block" id="compare">
@@ -139,25 +109,14 @@ export function RouteCompare({ routes, routeId, onRoute, doc, dark }: Props) {
       </p>
       <div className="controls">
         <RoutePicker routes={routes} value={routeId} onChange={onRoute} />
-        <button type="button" onClick={play} disabled={!doc}>
-          {playing ? "Pause" : Number.isFinite(time) ? "Resume" : "Replay the shift"}
-        </button>
-        <input
-          type="range"
-          aria-label="Time into the shift"
-          min={0}
-          max={Math.ceil(end)}
-          step={60}
-          value={Number.isFinite(time) ? Math.round(time) : Math.ceil(end)}
-          onChange={(e) => {
-            setPlaying(false);
-            const t = Number(e.target.value);
-            setTime(t >= end ? Infinity : t);
-          }}
+        <ReplayControls
+          end={end}
+          time={time}
+          playing={playing}
+          disabled={!doc}
+          onToggle={toggle}
+          onSeek={seek}
         />
-        <span className="clock" aria-live="off">
-          {clock(Number.isFinite(time) ? time : end)} into the shift
-        </span>
       </div>
       {doc && (
         <div className="panels">

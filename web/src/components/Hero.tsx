@@ -22,6 +22,7 @@ export function Hero({ index }: { index: DemoIndex }) {
         <a href={REPO}>Code on GitHub</a>
         <a href="#compare">Compare routes</a>
         <a href="#race">The race</a>
+        <a href="#day">A whole day</a>
         <a href="#results">All results</a>
       </nav>
 

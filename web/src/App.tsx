@@ -3,8 +3,9 @@ import { useEffect, useState } from "react";
 import { Hero, ResultsTable } from "./components/Hero";
 import { Race } from "./components/Race";
 import { RouteCompare } from "./components/RouteCompare";
-import { loadIndex, loadRoute } from "./data";
-import type { DemoIndex, RouteDoc } from "./types";
+import { StationDay } from "./components/StationDay";
+import { loadDay, loadIndex, loadRoute } from "./data";
+import type { DemoIndex, Listing } from "./types";
 
 function useDarkMode(): boolean {
   const query = "(prefers-color-scheme: dark)";
@@ -18,33 +19,34 @@ function useDarkMode(): boolean {
   return dark;
 }
 
-/** The route shown in every section: picking one anywhere switches them all. */
-function useRoute(index: DemoIndex | null) {
-  const [routeId, setRouteId] = useState<string>();
-  const [doc, setDoc] = useState<RouteDoc | null>(null);
+/** The item picked from a listing (first by default) and its loaded document. */
+function useDoc<T>(items: Listing[] | undefined, load: (id: string) => Promise<T>) {
+  const [id, setId] = useState<string>();
+  const [doc, setDoc] = useState<T | null>(null);
   const [error, setError] = useState<string | null>(null);
   useEffect(() => {
-    if (index && !routeId) setRouteId(index.routes[0]?.id);
-  }, [index, routeId]);
+    if (items && !id) setId(items[0]?.id);
+  }, [items, id]);
   useEffect(() => {
-    if (!routeId) return;
+    if (!id) return;
     let live = true;
-    loadRoute(routeId).then(
+    load(id).then(
       (d) => live && setDoc(d),
       (e: Error) => live && setError(e.message),
     );
     return () => {
       live = false;
     };
-  }, [routeId]);
-  return { routeId, setRouteId, doc, error };
+  }, [id, load]);
+  return { id, setId, doc, error };
 }
 
 export function App() {
   const [index, setIndex] = useState<DemoIndex | null>(null);
   const [error, setError] = useState<string | null>(null);
   const dark = useDarkMode();
-  const route = useRoute(index);
+  const route = useDoc(index?.routes, loadRoute); // shared by the compare and race sections
+  const day = useDoc(index?.days, loadDay);
 
   useEffect(() => {
     loadIndex().then(setIndex, (e: Error) => setError(e.message));
@@ -54,8 +56,8 @@ export function App() {
   if (!index) return <main className="page"><p className="muted">Loading…</p></main>;
   const shared = {
     routes: index.routes,
-    routeId: route.routeId,
-    onRoute: route.setRouteId,
+    routeId: route.id,
+    onRoute: route.setId,
     doc: route.doc,
     dark,
   };
@@ -65,6 +67,8 @@ export function App() {
       {route.error && <p className="error">Couldn't load this route ({route.error}).</p>}
       <RouteCompare {...shared} />
       <Race {...shared} />
+      {day.error && <p className="error">Couldn't load this day ({day.error}).</p>}
+      <StationDay days={index.days} dayId={day.id} onDay={day.setId} doc={day.doc} dark={dark} />
       <ResultsTable index={index} />
       <footer className="footer">
         <p>

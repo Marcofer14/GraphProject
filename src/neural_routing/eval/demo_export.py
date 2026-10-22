@@ -27,6 +27,7 @@ import argparse
 import json
 import logging
 import time
+from collections import Counter
 from concurrent.futures import ProcessPoolExecutor
 from pathlib import Path
 from typing import Any
@@ -203,7 +204,7 @@ def export_days(days: pd.DataFrame, split: str, out: Path) -> list[Json]:
         station, date = str(name).split("_", 1)
         inst = ds.station_day_instance(station, date, model)
         rows = rows.set_index("config")
-        solvers = {}
+        solvers: dict[str, Json] = {}
         for cfg, (key, label) in DAY_SOLVERS.items():
             if cfg not in rows.index:
                 continue
@@ -219,9 +220,19 @@ def export_days(days: pd.DataFrame, split: str, out: Path) -> list[Json]:
         }  # fmt: skip
         (out / "days" / f"{name}.json").write_text(json.dumps(doc, separators=(",", ":")))
         listing.append({"id": str(name), "city": doc["city"], "stops": inst.num_customers,
-                        "hours": {k: v["travel_h"] for k, v in solvers.items()}})  # fmt: skip
+                        "hours": {k: v["travel_h"] for k, v in solvers.items()},
+                        "moved": moved_share(solvers["driver"]["routes"],
+                                             solvers["ours"]["routes"])})  # fmt: skip
         log.info("station-day %s (%d stops) written", name, inst.num_customers)
     return listing
+
+
+def moved_share(reference: list[list[int]], routes: list[list[int]]) -> float:
+    """Share of stops served by a different van than in ``reference``: each van is matched to
+    the reference van it shares most stops with (0 = the same groups, only the order changes)."""
+    owner = {stop: v for v, route in enumerate(reference) for stop in route}
+    kept = sum(max(Counter(owner[s] for s in r).values(), default=0) for r in routes)
+    return round(1 - kept / max(1, sum(len(r) for r in routes)), 4)
 
 
 def rival_of(cfg: str) -> str | None:

@@ -44,3 +44,11 @@ def test_pick_routes_per_city_is_seeded() -> None:
     assert sum(df.set_index("instance").loc[p, "station"].iloc[0] == "DSE5" for p in picked) == 2
     assert picked == pick_routes(df, per_city=2, seed=0)
     assert city("DLA9") == "Los Angeles" and city("XYZ1") == "XYZ1"
+
+
+def test_moved_share() -> None:
+    from neural_routing.eval.demo_export import moved_share
+
+    drivers = [[1, 2, 3], [4, 5, 6]]
+    assert moved_share(drivers, [[6, 5, 4], [3, 1, 2]]) == 0.0  # same groups, other order
+    assert moved_share(drivers, [[1, 2, 4], [3, 5, 6]]) == round(2 / 6, 4)

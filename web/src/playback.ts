@@ -38,3 +38,35 @@ export function arrivals(numStops: number, sol: SolutionData): number[] {
   sol.routes.forEach((route, v) => route.forEach((node, k) => (out[node - 1] = sol.times[v][k])));
   return out;
 }
+
+/** Which van serves each stop (index = node - 1), -1 if none. */
+export function vanOf(numStops: number, sol: SolutionData): number[] {
+  const out = new Array<number>(numStops).fill(-1);
+  sol.routes.forEach((route, v) => route.forEach((node) => (out[node - 1] = v)));
+  return out;
+}
+
+/** Colours for `routes` so that each van takes the colour of the reference van it shares most
+ * stops with (the same area keeps its colour across plans); leftovers take unused colours. */
+export function alignedColors(reference: number[][], routes: number[][], palette: string[]): string[] {
+  const owner = new Map<number, number>();
+  reference.forEach((route, v) => route.forEach((stop) => owner.set(stop, v)));
+  const used = new Set<number>();
+  const pick = routes.map((route) => {
+    const counts = new Map<number, number>();
+    route.forEach((stop) => {
+      const v = owner.get(stop);
+      if (v !== undefined) counts.set(v, (counts.get(v) ?? 0) + 1);
+    });
+    const best = [...counts.entries()].sort((a, b) => b[1] - a[1]).find(([v]) => !used.has(v))?.[0];
+    if (best !== undefined) used.add(best);
+    return best;
+  });
+  let next = 0;
+  return pick.map((v) => {
+    if (v !== undefined) return palette[v % palette.length];
+    while (used.has(next)) next++;
+    used.add(next);
+    return palette[next % palette.length];
+  });
+}

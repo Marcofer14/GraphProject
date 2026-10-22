@@ -1,15 +1,17 @@
-import type { DemoIndex, RouteDoc } from "./types";
+import type { DayDoc, DemoIndex, RouteDoc } from "./types";
 
 const base = `${import.meta.env.BASE_URL}data`;
 
 async function getJson<T>(path: string): Promise<T> {
-  const res = await fetch(`${base}/${path}`);
+  // revalidate: the data changes with each deploy and Pages lets browsers cache it for 10 min
+  const res = await fetch(`${base}/${path}`, { cache: "no-cache" });
   if (!res.ok) throw new Error(`${path}: ${res.status}`);
   return (await res.json()) as T;
 }
 
 export const loadIndex = () => getJson<DemoIndex>("index.json");
 export const loadRoute = (id: string) => getJson<RouteDoc>(`routes/${id}.json`);
+export const loadDay = (id: string) => getJson<DayDoc>(`days/${id}.json`);
 
 // Display order, names and colours, shared by the table, the maps and the legend.
 export const SOLVERS: Record<string, { name: string; color: string; note?: string }> = {
@@ -29,3 +31,12 @@ export const SOLVERS: Record<string, { name: string; color: string; note?: strin
 };
 
 export const ROUTE_CHOICES = ["driver", "ours", "network", "ortools", "pyvrp"];
+
+// Whole station-days: the plans on offer and one colour per van (cycled past six).
+export const DAY_SOLVERS: Record<string, { name: string; note?: string }> = {
+  driver: { name: "Real drivers" },
+  ours: { name: "Our model", note: "cluster + network" },
+  pyvrp: { name: "PyVRP", note: "60 s" },
+  savings: { name: "Savings heuristic" },
+};
+export const VAN_COLORS = ["#185FA5", "#D4537E", "#3B6D11", "#BA7517", "#7F77DD", "#E24B4A"];

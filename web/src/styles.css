@@ -422,3 +422,18 @@ tr.ours {
   stroke-width: 1;
   stroke-dasharray: 2 3;
 }
+
+.van-dots {
+  display: inline-flex;
+  gap: 2px;
+}
+
+.van-dots .dot {
+  width: 8px;
+  height: 8px;
+  margin-right: 0;
+}
+
+#day .cards {
+  margin-bottom: 14px;
+}

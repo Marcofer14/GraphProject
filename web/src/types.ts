@@ -49,6 +49,7 @@ export interface Listing {
   city: string;
   stops: number;
   hours: Record<string, number>;
+  moved?: number; // station-days: share of stops our plan serves with a different van than the drivers
 }
 
 export interface DemoIndex {
@@ -56,4 +57,14 @@ export interface DemoIndex {
   headline: { routes: number; solvers: Record<string, HeadlineSolver> };
   routes: Listing[];
   days: Listing[];
+}
+
+export interface DayDoc {
+  id: string;
+  city: string;
+  station: string;
+  date: string;
+  depot: LatLng;
+  stops: LatLng[];
+  solvers: Record<string, SolverResult>; // each with `vans`
 }

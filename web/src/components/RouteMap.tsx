@@ -11,7 +11,7 @@ import "maplibre-gl/dist/maplibre-gl.css";
 import workerUrl from "maplibre-gl/dist/maplibre-gl-worker.mjs?url";
 import { useEffect, useMemo, useRef, useState } from "react";
 
-import { arrivals, drivenBy, toLngLat, tracks } from "../playback";
+import { arrivals, drivenBy, toLngLat, tracks, vanOf } from "../playback";
 import type { LatLng, SolutionData } from "../types";
 
 // MapLibre looks for its worker next to its own module, which the bundler moves
@@ -29,6 +29,7 @@ interface Props {
   stops: LatLng[];
   solution: SolutionData;
   color: string;
+  colors?: string[]; // one colour per van (cycled); without it every van takes `color`
   time: number; // seconds after departure; past the end shows the whole route
   dark: boolean;
   onMap?: (map: MLMap | null) => void;
@@ -42,7 +43,7 @@ function addLayers(map: MLMap) {
     type: "line",
     source: "driven",
     layout: { "line-join": "round", "line-cap": "round" },
-    paint: { "line-width": 2.5, "line-opacity": 0.9 },
+    paint: { "line-width": 2.5, "line-opacity": 0.9, "line-color": ["get", "color"] },
   });
   map.addLayer({
     id: "stops",
@@ -60,7 +61,12 @@ function addLayers(map: MLMap) {
     id: "van",
     type: "circle",
     source: "van",
-    paint: { "circle-radius": 6, "circle-stroke-width": 2, "circle-stroke-color": "#ffffff" },
+    paint: {
+      "circle-radius": 6,
+      "circle-color": ["get", "color"],
+      "circle-stroke-width": 2,
+      "circle-stroke-color": "#ffffff",
+    },
   });
 }
 
@@ -70,7 +76,7 @@ const point = (coordinates: [number, number], properties = {}): Feature => ({
   properties,
 });
 
-export function RouteMap({ depot, stops, solution, color, time, dark, onMap, small }: Props) {
+export function RouteMap({ depot, stops, solution, color, colors, time, dark, onMap, small }: Props) {
   const container = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MLMap | null>(null);
   const [styleVersion, setStyleVersion] = useState(0); // bumps when our layers are (re)added
@@ -117,23 +123,21 @@ export function RouteMap({ depot, stops, solution, color, time, dark, onMap, sma
 
   const vans = useMemo(() => tracks(depot, stops, solution), [depot, stops, solution]);
   const arrive = useMemo(() => arrivals(stops.length, solution), [stops, solution]);
+  const owner = useMemo(() => vanOf(stops.length, solution), [stops, solution]);
+  const vanColor = useMemo(
+    () => (v: number) => (colors ? colors[v % colors.length] : color),
+    [colors, color],
+  );
 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || styleVersion === 0) return;
     (map.getSource("stops") as GeoJSONSource).setData({
       type: "FeatureCollection",
-      features: stops.map((s, i) => point(toLngLat(s), { arrive: arrive[i] })),
+      features: stops.map((s, i) => point(toLngLat(s), { arrive: arrive[i], color: vanColor(owner[i]) })),
     });
     (map.getSource("depot") as GeoJSONSource).setData(point(toLngLat(depot)));
-  }, [depot, stops, arrive, styleVersion]);
-
-  useEffect(() => {
-    const map = mapRef.current;
-    if (!map || styleVersion === 0) return;
-    map.setPaintProperty("driven", "line-color", color);
-    map.setPaintProperty("van", "circle-color", color);
-  }, [color, styleVersion]);
+  }, [depot, stops, arrive, owner, vanColor, styleVersion]);
 
   useEffect(() => {
     const map = mapRef.current;
@@ -141,23 +145,25 @@ export function RouteMap({ depot, stops, solution, color, time, dark, onMap, sma
     const driven = vans.map((v) => drivenBy(v, time));
     (map.getSource("driven") as GeoJSONSource).setData({
       type: "FeatureCollection",
-      features: driven.map((coordinates) => ({
+      features: driven.map((coordinates, v) => ({
         type: "Feature",
         geometry: { type: "LineString", coordinates },
-        properties: {},
+        properties: { color: vanColor(v) },
       })),
     });
     (map.getSource("van") as GeoJSONSource).setData({
       type: "FeatureCollection",
-      features: driven.filter((_, v) => time < vans[v].times.at(-1)!).map((d) => point(d.at(-1)!)),
+      features: driven.flatMap((d, v) =>
+        time < vans[v].times.at(-1)! ? [point(d.at(-1)!, { color: vanColor(v) })] : [],
+      ),
     });
     map.setPaintProperty("stops", "circle-color", [
       "case",
       ["<=", ["get", "arrive"], time],
-      color,
+      ["get", "color"],
       UNVISITED,
     ]);
-  }, [vans, time, color, styleVersion]);
+  }, [vans, time, vanColor, styleVersion]);
 
   return <div ref={container} className={small ? "map small" : "map"} />;
 }

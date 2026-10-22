@@ -254,7 +254,8 @@ def train(cfg: DictConfig) -> Path:
         # history. The architecture must match; the instance size may differ (the policy is
         # size-agnostic). Resuming this stage later takes precedence over init_from.
         init = torch.load(t_cfg.init_from, map_location=device, weights_only=False)
-        if init["model_config"] != vars(policy.cfg):
+        # compare with defaults filled in: older checkpoints predate newer (default) options
+        if ModelConfig(**init["model_config"]) != policy.cfg:
             raise ValueError(
                 f"init_from {t_cfg.init_from}: model config {init['model_config']} "
                 f"differs from {vars(policy.cfg)}"

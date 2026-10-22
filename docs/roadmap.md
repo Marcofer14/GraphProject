@@ -39,7 +39,7 @@ flowchart LR
 | Early stopping on controllable length ✅ (ADR-013) | — | fair stopping on Amazon-like data | done |
 | Time windows ✅ (env + model + inference + benchmark, ADR-014) | — | CVRPTW training | done |
 | Train CVRPTW-50 ✅ (best epoch 41, early-stopped at 49) | — | curriculum with windows | done |
-| Curriculum ready ✅ (`train.init_from`, `cvrptw100/150_amazon`, VS Code task, chain `E`) | CVRPTW-50 | real-size model | GPU, ~6 h |
+| Curriculum ready ✅ (`cvrp100/150_amazon` from `cvrp50_pomo_amazon`, ADR-015; VS Code task, chain `E`) | — | real-size model | GPU, ~6 h |
 | Real-route benchmark with neural solvers ✅ (`nr-bench --mode route ... attention_ls@ckpt`, controllable gap) | — | the phase-3 headline | ready |
 | Time windows (env + model) | nothing | CVRPTW training | CPU, then GPU tests |
 | CVRPTW-50 | generator + time windows | curriculum with windows | GPU |

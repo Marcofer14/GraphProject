@@ -254,6 +254,15 @@ def test_init_from_starts_a_new_stage_from_other_weights(tmp_path) -> None:  # t
     history = json.loads((tmp_path / "stage2b" / "history.json").read_text())
     assert [h["epoch"] for h in history] == [0]  # fresh history, not a resume
 
+    # a checkpoint saved before a (default-valued) model option existed is still accepted
+    old = torch.load(stage1, weights_only=False)
+    del old["model_config"]["time_features"]
+    old_path = tmp_path / "old_stage1.pt"
+    torch.save(old, old_path)
+    cfg2c = cfg_for(9, "stage2c")
+    cfg2c.train.init_from = str(old_path)
+    assert train(cfg2c).exists()
+
     bad = cfg_for(9, "bad")
     bad.model.embed_dim = 64
     bad.model.num_heads = 4

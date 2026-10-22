@@ -1,0 +1,15 @@
+# Curriculum stage 2/3: CVRP-100 on the Amazon-calibrated distribution, warm-started from
+# cvrp50_pomo_amazon (no time-window inputs: ADR-015). ~1.4 s/step, ~2.4 GB on a GTX 1660 Super.
+defaults:
+  - cvrp50_amazon
+  - _self_
+
+num_customers: 100
+
+train:
+  tag: cvrp100_pomo_amazon
+  init_from: checkpoints/cvrp50_pomo_amazon.pt
+  batch_size: 32
+  steps_per_epoch: 250
+  epochs: 25
+  val_size: 300

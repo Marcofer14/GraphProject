@@ -48,16 +48,17 @@ switch ($Chain) {
             "--tag", "e100")) "results\synthetic_cvrp50_e100.md"
     }
     "E" {  # GPU overnight: size curriculum 50 -> 100 -> 150, then the final real-route benchmark
-        Step "curriculum CVRPTW-100" @("-m", "neural_routing.ml.train", "--config-name",
-            "cvrptw100_amazon")
-        Step "curriculum CVRPTW-150" @("-m", "neural_routing.ml.train", "--config-name",
-            "cvrptw150_amazon")
+        Step "curriculum CVRP-100" @("-m", "neural_routing.ml.train", "--config-name",
+            "cvrp100_amazon")
+        Step "curriculum CVRP-150" @("-m", "neural_routing.ml.train", "--config-name",
+            "cvrp150_amazon")
         Step "final: 200 real routes" -skipIfExists "results\route_evaluation_n200_final.md" -cmd @(
             "-m", "neural_routing.eval.benchmark", "--mode", "route", "--split", "evaluation",
             "--n", "200", "--workers", "6", "--tag", "final", "--configs", "reference",
             "savings_ls", "ortools:10", "pyvrp:10",
-            "attention_ls@checkpoints/cvrptw150_pomo_amazon.pt",
-            "attention_ls@checkpoints/cvrp50_pomo_amazon.pt")
+            "attention_ls@checkpoints/cvrp150_pomo_amazon.pt",
+            "attention_ls@checkpoints/cvrp50_pomo_amazon.pt",
+            "attention_ls@checkpoints/cvrptw50_pomo_amazon.pt")
     }
     "C" {  # CPU: real Amazon routes, then whole station-days
         Step "bench amazon routes" -skipIfExists "results\route_training_n200.md" -cmd @("-m", "neural_routing.eval.benchmark", "--mode", "route",

@@ -137,6 +137,23 @@ candidates are chosen on `travel + tw_penalty x lateness`. Training uses windows
 (`data.tw_tightness`) because real ones rarely bind: under a naive visiting order only 8 % of
 instances are late at 1.0, 65 % at 0.25. Smoke run: validation cost 51.3 -> 32.0 in 80 steps.
 
+## ADR-015 · Size curriculum without time-window inputs (2026-10-22)
+The CVRPTW-50 model (time features, trained with windows shrunk to 25 % and a 10x lateness
+penalty) was compared with the window-blind Amazon CVRP-50 model on 200 Amazon-like instances with
+those tight windows. Every good solver is late at only 0.1–0.2 % of stops; the time-aware model
+halves that (0.21 % -> 0.11 %) but nearly triples the distance gap (0.64 % -> 1.68 % with local
+search). On 10 real routes it was likewise worse in distance (11.6 % vs 5.1 % controllable gap)
+with no lateness gain. It learned to be over-cautious for windows that almost never bind.
+
+**Decision:** the curriculum (`cvrp100_amazon` -> `cvrp150_amazon`, `train.init_from`) starts from
+the window-blind `cvrp50_pomo_amazon`. Real windows are still honoured at inference: candidates are
+chosen on travel + 10 x lateness and local search never accepts added lateness; the final
+real-route benchmark reports `late_stops_%` to verify it. A model with time inputs cannot inherit
+weights from one without them (the input layer changes), so mixing is not an option; the
+time-aware model is kept for phase 4 (e.g. retrain with realistic tightness and a lower penalty).
+`init_from` compares model configs with defaults filled in, so checkpoints saved before an
+option existed remain valid starting points.
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

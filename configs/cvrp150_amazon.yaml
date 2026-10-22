@@ -1,0 +1,15 @@
+# Curriculum stage 3/3: CVRP-150, the size of a real van route, warm-started from CVRP-100.
+# ~1.9 s/step, ~3.3 GB on a GTX 1660 Super.
+defaults:
+  - cvrp50_amazon
+  - _self_
+
+num_customers: 150
+
+train:
+  tag: cvrp150_pomo_amazon
+  init_from: checkpoints/cvrp100_pomo_amazon.pt
+  batch_size: 16
+  steps_per_epoch: 250
+  epochs: 25
+  val_size: 200

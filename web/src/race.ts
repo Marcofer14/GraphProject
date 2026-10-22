@@ -3,13 +3,21 @@ import type { RouteDoc, SolutionData } from "./types";
 
 export type Hardware = "gpu" | "cpu";
 
-/** What a solver returns after `t` seconds of computing (one run per time budget). */
+/** One run: the time it was given (`budget`, or its own time for a one-shot answer), the time it
+ * actually took (`t`, a few ms over the budget) and what it returned. */
+export interface RacePointView {
+  budget: number;
+  t: number;
+  sol: SolutionData;
+}
+
+/** What a solver returns for each time budget (one run per budget). */
 export interface Series {
   key: string;
   name: string;
   color: string;
-  anytime: boolean; // classic solvers keep improving with more time; ours runs once
-  points: { t: number; sol: SolutionData }[];
+  anytime: boolean; // keeps improving with more time; the network alone answers once
+  points: RacePointView[];
 }
 
 export const NO_ROUTE: SolutionData = { routes: [], times: [], travel_h: 0, controllable_h: 0, late: 0, runtime_s: 0 };
@@ -17,10 +25,12 @@ export const NO_ROUTE: SolutionData = { routes: [], times: [], travel_h: 0, cont
 export function raceSeries(doc: RouteDoc, hardware: Hardware): Series[] {
   const once = (key: string, cpuKey: string) => {
     const sol = hardware === "gpu" ? doc.solvers[key] : doc.race[cpuKey][0];
-    return [{ t: sol.runtime_s, sol }];
+    return [{ budget: sol.runtime_s, t: sol.runtime_s, sol }];
   };
   const anytime = (key: string) =>
-    [...doc.race[key]].sort((a, b) => a.runtime_s - b.runtime_s).map((sol) => ({ t: sol.runtime_s, sol }));
+    [...doc.race[key]]
+      .sort((a, b) => a.runtime_s - b.runtime_s)
+      .map((sol) => ({ budget: sol.budget_s ?? sol.runtime_s, t: sol.runtime_s, sol }));
   const series = (key: string, isAnytime: boolean, points: Series["points"]): Series => ({
     key,
     name: SOLVERS[key].name,
@@ -28,18 +38,24 @@ export function raceSeries(doc: RouteDoc, hardware: Hardware): Series[] {
     anytime: isAnytime,
     points,
   });
+  // with the ILS export our model is anytime too: first answer, then the search until the budget
+  const ilsKey = hardware === "gpu" ? "ours_ils" : "ours_ils_cpu";
+  const ours =
+    doc.race[ilsKey]?.length > 1
+      ? series("ours", true, anytime(ilsKey))
+      : series("ours", false, once("ours", "ours_cpu"));
   return [
-    series("ours", false, once("ours", "ours_cpu")),
+    ours,
     series("network", false, once("network", "network_cpu")),
     series("pyvrp", true, anytime("pyvrp")),
     series("ortools", true, anytime("ortools")),
   ];
 }
 
-/** The longest run that fits in the budget, or null if the solver has nothing yet. */
-export function resultAt(s: Series, budget: number): { t: number; sol: SolutionData } | null {
+/** The run with the largest budget that fits, or null if the solver has nothing yet. */
+export function resultAt(s: Series, budget: number): RacePointView | null {
   let found = null;
-  for (const p of s.points) if (p.t <= budget) found = p;
+  for (const p of s.points) if (p.budget <= budget) found = p;
   return found;
 }
 

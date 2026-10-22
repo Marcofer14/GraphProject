@@ -6,7 +6,7 @@ const REPO = "https://github.com/Marcofer14/GraphProject";
 
 export function Hero({ index }: { index: DemoIndex }) {
   const { routes: n, solvers: s } = index.headline;
-  const { ours, driver, ortools, ortools_fast, pyvrp_fast } = s;
+  const { ours, driver, ortools, ortools_1s, pyvrp, pyvrp_1s, ours_ils1 } = s;
   const lessDriving = 100 * (1 - ours.travel_h / driver.travel_h);
   return (
     <header className="hero">
@@ -14,12 +14,14 @@ export function Hero({ index }: { index: DemoIndex }) {
       <h1>Neural last-mile routing</h1>
       <p className="lead">
         A Transformer trained with reinforcement learning plans delivery routes on real Amazon data. It reads the real
-        street travel times between stops, proposes many routes at once and polishes the best ones with local search.
-        Below, it faces real drivers and two classical solvers on {n} routes it never saw.
+        street travel times between stops, proposes many routes at once, polishes the best ones and keeps improving
+        them with local search for as long as it is given. Below, it faces real drivers and two classical solvers on{" "}
+        {n} routes it never saw.
       </p>
       <nav className="links">
         <a href={REPO}>Code on GitHub</a>
         <a href="#compare">Compare routes</a>
+        <a href="#race">The race</a>
         <a href="#results">All results</a>
       </nav>
 
@@ -28,28 +30,29 @@ export function Hero({ index }: { index: DemoIndex }) {
           <p className="big">−{lessDriving.toFixed(1)} %</p>
           <p className="card-title">driving time vs real drivers</p>
           <p className="card-text">
-            {hours(driver.travel_h)} → {hours(ours.travel_h)} per route, shorter on {driver.ours_wins} of {n} routes,
-            with almost no late deliveries ({pct(ours.late_pct, 2)} of stops).
+            {hours(driver.travel_h)} → {hours(ours.travel_h)} per route from the first answer (half a second), shorter
+            on {driver.ours_wins} of {n} routes, with almost no late deliveries.
           </p>
         </article>
         <article className="card">
           <p className="big">
-            {ortools_fast.ours_wins} / {n}
-          </p>
-          <p className="card-title">routes better than OR-Tools at equal time</p>
-          <p className="card-text">
-            Both given about half a second. Even with 10 s for OR-Tools, our model is better on {ortools.ours_wins} of{" "}
-            {n} routes.
-          </p>
-        </article>
-        <article className="card">
-          <p className="big">
-            {pyvrp_fast.ours_wins} / {n}
+            {pyvrp_1s.ours_wins} / {n}
           </p>
           <p className="card-title">routes better than PyVRP at equal time</p>
           <p className="card-text">
-            On par with the strongest open-source solver, but not ahead: PyVRP's average is still closer to the best
-            route ({pct(pyvrp_fast.gap_ctrl_pct, 2)} vs {pct(ours.gap_ctrl_pct, 2)} extra driving).
+            Both given one second, our model is also closer to the best route on average ({pct(ours_ils1.gap_ctrl_pct, 2)}{" "}
+            vs {pct(pyvrp_1s.gap_ctrl_pct, 2)} extra driving). PyVRP given 10 s is still better (
+            {pct(pyvrp.gap_ctrl_pct, 2)}).
+          </p>
+        </article>
+        <article className="card">
+          <p className="big">
+            {ortools_1s.ours_wins} / {n}
+          </p>
+          <p className="card-title">routes better than OR-Tools at equal time</p>
+          <p className="card-text">
+            Both given one second. Even with 10 s for OR-Tools against 2 s for our model, ours is better on{" "}
+            {ortools.ours_wins} of {n} routes.
           </p>
         </article>
       </div>
@@ -57,7 +60,22 @@ export function Hero({ index }: { index: DemoIndex }) {
   );
 }
 
-const ORDER = ["ours", "pyvrp_fast", "pyvrp_1s", "pyvrp", "ortools_fast", "ortools", "network", "driver"];
+const ORDER = [
+  "pyvrp",
+  "ours_ils2",
+  "pyvrp_2s",
+  "ours_ils1",
+  "pyvrp_1s",
+  "pyvrp_fast",
+  "ours",
+  "ortools",
+  "ortools_2s",
+  "ortools_1s",
+  "network",
+  "ortools_fast",
+  "driver",
+];
+const OURS = new Set(["ours", "ours_ils1", "ours_ils2"]);
 
 export function ResultsTable({ index }: { index: DemoIndex }) {
   const { routes: n, solvers } = index.headline;
@@ -73,7 +91,7 @@ export function ResultsTable({ index }: { index: DemoIndex }) {
               <th scope="col">Driving per route</th>
               <th scope="col">Above the best route*</th>
               <th scope="col">Late stops</th>
-              <th scope="col">Our model better on</th>
+              <th scope="col">Our model better on†</th>
             </tr>
           </thead>
           <tbody>
@@ -81,7 +99,7 @@ export function ResultsTable({ index }: { index: DemoIndex }) {
               const r = solvers[k];
               const meta = SOLVERS[k];
               return (
-                <tr key={k} className={k === "ours" ? "ours" : undefined}>
+                <tr key={k} className={OURS.has(k) ? "ours" : undefined}>
                   <th scope="row">
                     <span className="dot" style={{ background: meta.color }} aria-hidden="true" />
                     {meta.name}
@@ -99,9 +117,14 @@ export function ResultsTable({ index }: { index: DemoIndex }) {
         </table>
       </div>
       <p className="note">
-        * Extra driving above the best route any solver found for that delivery, leaving out the trip to and from the
-        station that every plan must make (about three quarters of each route). Compute time is the median; our model
-        runs on a GTX 1660 Super GPU (median 1.8 s on CPU), the others on CPU.
+        * Extra driving above the best route any of these solvers found for that delivery, leaving out the trip to and
+        from the station that every plan must make (about three quarters of each route). Compute time is the median.
+        Our model's network runs on a GTX 1660 Super GPU (its first answer takes a median 1.8 s on CPU); its local
+        search and both classical solvers use one CPU core.
+      </p>
+      <p className="note">
+        † Compared route by route with our model given the same time; against the 10-second budgets, with our 2-second
+        run; against the driver and the network alone, with its first answer.
       </p>
     </section>
   );

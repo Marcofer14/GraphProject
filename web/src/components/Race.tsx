@@ -36,9 +36,9 @@ export function Race({ routes, routeId, onRoute, doc, dark }: Props) {
     <section className="block" id="race">
       <h2>The race: quality against computing time</h2>
       <p className="lead">
-        Classical solvers keep improving the longer they run; our model answers in one shot. Move the time budget to
-        see the route each one returns after that many seconds, measured in extra minutes of driving above the best
-        route any of them found.
+        Classical solvers keep improving the longer they run, and so does our model: after its first answer it keeps
+        kicking and re-polishing its best route until the time is up. Move the time budget to see the route each one
+        returns after that many seconds, measured in extra minutes of driving above the best route any of them found.
       </p>
       <div className="controls">
         <RoutePicker routes={routes} value={routeId} onChange={onRoute} />
@@ -110,10 +110,11 @@ export function Race({ routes, routeId, onRoute, doc, dark }: Props) {
         </>
       )}
       <p className="note">
-        OR-Tools and PyVRP were run once per budget (0.5, 1, 2, 5 and 10 s) on CPU; each point is what that run
-        returned. Our model has no budget: it takes the time shown, on a GTX 1660 Super GPU or on the CPU. Over all 200
-        test routes at about half a second, PyVRP is closer to the best route on average, our model wins more often
-        than not, and OR-Tools trails both.
+        Every solver was run once per budget and each point is what that run returned: OR-Tools and PyVRP at 0.5, 1,
+        2, 5 and 10 s on CPU; our model's first answer, then 1 and 2 s with its search, with the network on a GTX 1660
+        Super GPU and the search on one CPU core. The CPU switch shows our first answer when the network also runs on
+        the CPU. Over all 200 test routes with one second each, our model is closer to the best route than PyVRP on
+        average and on most routes; PyVRP given 10 s is still better.
       </p>
     </section>
   );

@@ -12,7 +12,13 @@ Demo routes are drawn at random per city from the phase-4 evaluation (not cherry
 
     uv run nr-demo-export --results results/raw/route_evaluation_n200_phase4_*.parquet \\
         --days results/raw/station-day_training_n6_fleet_*.parquet \\
-        --equal-time results/raw/route_evaluation_n200_equal_time_*.parquet
+        --equal-time results/raw/route_evaluation_n200_equal_time_*.parquet \\
+                     results/raw/route_evaluation_n200_ils_*.parquet
+
+Then add our anytime curve (ADR-021) to the exported routes: the GPU points come from the ILS
+benchmark, the CPU budgets are run here, so run it on an otherwise idle machine::
+
+    uv run nr-demo-export --results ... --equal-time ... --add-ils 3 6
 """
 
 from __future__ import annotations
@@ -48,11 +54,20 @@ ROUTE_SOLVERS = {
     "ortools:10": ("ortools", "OR-Tools"),
     "pyvrp:10": ("pyvrp", "PyVRP"),
 }
-EQUAL_TIME_SOLVERS = {  # same budget as our model (nr-bench --tag equal_time)
+ILS = f"attention_ils@{CHECKPOINT}"
+EQUAL_TIME_SOLVERS = {  # other budgets (nr-bench --tag equal_time and --tag ils)
+    f"{ILS}:1": ("ours_ils1", "Our model + search (1 s)"),
+    f"{ILS}:2": ("ours_ils2", "Our model + search (2 s)"),
     "ortools:0.5": ("ortools_fast", "OR-Tools (0.5 s)"),
+    "ortools:1": ("ortools_1s", "OR-Tools (1 s)"),
+    "ortools:2": ("ortools_2s", "OR-Tools (2 s)"),
     "pyvrp:0.5": ("pyvrp_fast", "PyVRP (0.5 s)"),
     "pyvrp:1": ("pyvrp_1s", "PyVRP (1 s)"),
+    "pyvrp:2": ("pyvrp_2s", "PyVRP (2 s)"),
 }
+# which version of our model each solver is compared with route by route: the one with the same
+# computing time where there is one, our longest run (2 s) against the 10 s budgets
+RIVALS = {"0.5": f"attention_ls@{CHECKPOINT}", "1": f"{ILS}:1", "2": f"{ILS}:2", "10": f"{ILS}:2"}
 DAY_SOLVERS = {
     "reference": ("driver", "Real drivers"),
     f"cluster_attention_ls@{CHECKPOINT}": ("ours", "Our model (cluster + network)"),
@@ -209,11 +224,21 @@ def export_days(days: pd.DataFrame, split: str, out: Path) -> list[Json]:
     return listing
 
 
+def rival_of(cfg: str) -> str | None:
+    """The version of our model a solver is compared with route by route (None: ours)."""
+    one_shot = f"attention_ls@{CHECKPOINT}"
+    if cfg == one_shot or cfg.startswith(ILS):
+        return None
+    if cfg in ("reference", f"attention@{CHECKPOINT}"):
+        return one_shot
+    return RIVALS.get(cfg.rsplit(":", 1)[-1])
+
+
 def headline(df: pd.DataFrame) -> dict[str, Any]:
     """Means over all evaluation routes (not just the demo ones), and on how many routes our
-    model is strictly better than each other solver (by more than half a second)."""
+    model is strictly better (by more than half a second) than each other solver."""
     travel = df.pivot_table(index="instance", columns="config", values="travel_time_s")
-    ours = travel[next(c for c, (k, _) in ROUTE_SOLVERS.items() if k == "ours")]
+    keys = {cfg: key for cfg, (key, _) in (ROUTE_SOLVERS | EQUAL_TIME_SOLVERS).items()}
     out = {}
     for cfg, (key, label) in (ROUTE_SOLVERS | EQUAL_TIME_SOLVERS).items():
         if cfg not in travel:
@@ -226,9 +251,38 @@ def headline(df: pd.DataFrame) -> dict[str, Any]:
             "late_pct": round(100 * float(g["tw_violations"].sum() / g["num_customers"].sum()), 2),
             "runtime_s": round(float(g["runtime_s"].median()), 3),
         }
-        if key != "ours":
-            out[key]["ours_wins"] = int((ours < travel[cfg] - 0.5).sum())
+        rival = rival_of(cfg)
+        if rival is not None and rival in travel:
+            out[key]["ours_wins"] = int((travel[rival] < travel[cfg] - 0.5).sum())
+            out[key]["ours_rival"] = keys[rival]
     return {"routes": int(df["instance"].nunique()), "solvers": out}
+
+
+def add_ils(df: pd.DataFrame, split: str, out: Path, cpu_budgets: list[float]) -> None:
+    """Make our model an anytime curve in every exported route's race: the GPU points come from
+    the ILS benchmark runs (nothing recomputed); the CPU points are run here on the CPU only."""
+    ds = AmazonDataset(split)
+    cpu = get_solver("attention_ils", checkpoint=CHECKPOINT, device="cpu")
+    for path in sorted((out / "routes").glob("*.json")):
+        doc = json.loads(path.read_text())
+        inst = ds.route_instance(doc["id"])
+        rows = df[df["instance"] == doc["id"]].set_index("config")
+        one_shot = {
+            k: v for k, v in doc["solvers"]["ours"].items() if k not in ("label", "driver_score")
+        }
+        gpu = [{"budget_s": None} | one_shot]
+        for ils_budget in (1, 2):
+            row = rows.loc[f"{ILS}:{ils_budget}"].to_dict()
+            gpu.append({"budget_s": float(ils_budget)} | solution_payload(
+                inst, json.loads(row["routes"]), float(row["runtime_s"])))  # fmt: skip
+        on_cpu = [doc["race"]["ours_cpu"][0]]
+        for budget in cpu_budgets:
+            sol = cpu.solve(inst, time_limit=budget)
+            on_cpu.append({"budget_s": budget} | solution_payload(
+                inst, [list(r) for r in sol.routes], sol.runtime_s))  # fmt: skip
+        doc["race"] |= {"ours_ils": gpu, "ours_ils_cpu": on_cpu}
+        path.write_text(json.dumps(doc, separators=(",", ":")))
+        log.info("ILS added to %s", path.name)
 
 
 def main() -> None:
@@ -243,18 +297,37 @@ def main() -> None:
     parser.add_argument("--limits", type=float, nargs="+", default=[0.5, 1.0, 2.0, 5.0])
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--workers", type=int, default=4)
-    parser.add_argument("--equal-time", type=Path, default=None, help="equal-time route parquet")
+    parser.add_argument(
+        "--equal-time",
+        type=Path,
+        nargs="+",
+        default=[],
+        help="more route parquets on the same routes (equal time, ILS)",
+    )
     parser.add_argument("--index-only", action="store_true",
                         help="only rewrite the headline in an existing index.json")  # fmt: skip
+    parser.add_argument(
+        "--add-ils",
+        type=float,
+        nargs="*",
+        default=None,
+        metavar="CPU_BUDGET",
+        help="rewrite the headline and add our anytime curve to the "
+        "exported routes (GPU runs from --equal-time; CPU budgets run here)",
+    )
     parser.add_argument("--out", type=Path, default=Path("web/public/data"))
     args = parser.parse_args()
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 
     df = pd.read_parquet(args.results)
     if args.equal_time:  # same routes, more configs: gaps against the best of all of them
-        extra = pd.read_parquet(args.equal_time)
-        df = add_gaps(pd.concat([df, extra]).drop(columns=["gap_pct", "gap_ctrl_pct"]))
-    if args.index_only:
+        extra = [pd.read_parquet(p) for p in args.equal_time]
+        df = pd.concat([df, *extra]).drop(columns=["gap_pct", "gap_ctrl_pct"])
+        # "best route" = best of the solvers the page shows (not older models in the same runs)
+        df = add_gaps(df[df["config"].isin([*ROUTE_SOLVERS, *EQUAL_TIME_SOLVERS])].copy())
+    if args.add_ils is not None:
+        add_ils(df, args.split, args.out, args.add_ils)
+    if args.index_only or args.add_ils is not None:
         path = args.out / "index.json"
         index = json.loads(path.read_text()) | {"headline": headline(df)}
         path.write_text(json.dumps(index, indent=1))

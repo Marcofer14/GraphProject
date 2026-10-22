@@ -40,7 +40,8 @@ export interface HeadlineSolver {
   gap_ctrl_pct: number;
   late_pct: number;
   runtime_s: number;
-  ours_wins?: number; // routes where our model is strictly better
+  ours_wins?: number; // routes where our model (the version in ours_rival) is strictly better
+  ours_rival?: string;
 }
 
 export interface Listing {

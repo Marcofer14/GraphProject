@@ -6,65 +6,113 @@
    "driver": {
     "label": "Real driver",
     "travel_h": 3.2795,
-    "gap_ctrl_pct": 22.22,
+    "gap_ctrl_pct": 22.59,
     "late_pct": 0.09,
     "runtime_s": 0.0,
-    "ours_wins": 199
+    "ours_wins": 199,
+    "ours_rival": "ours"
    },
    "ours": {
     "label": "Our model",
     "travel_h": 2.9404,
-    "gap_ctrl_pct": 2.86,
+    "gap_ctrl_pct": 3.18,
     "late_pct": 0.01,
     "runtime_s": 0.499
    },
    "network": {
     "label": "Network alone",
     "travel_h": 3.0841,
-    "gap_ctrl_pct": 10.36,
+    "gap_ctrl_pct": 10.7,
     "late_pct": 0.02,
     "runtime_s": 0.425,
-    "ours_wins": 191
+    "ours_wins": 191,
+    "ours_rival": "ours"
    },
    "ortools": {
     "label": "OR-Tools",
     "travel_h": 2.9914,
-    "gap_ctrl_pct": 5.05,
+    "gap_ctrl_pct": 5.38,
     "late_pct": 0.0,
     "runtime_s": 10.005,
-    "ours_wins": 161
+    "ours_wins": 189,
+    "ours_rival": "ours_ils2"
    },
    "pyvrp": {
     "label": "PyVRP",
     "travel_h": 2.9042,
-    "gap_ctrl_pct": 0.38,
+    "gap_ctrl_pct": 0.7,
     "late_pct": 0.0,
     "runtime_s": 10.037,
-    "ours_wins": 37
+    "ours_wins": 93,
+    "ours_rival": "ours_ils2"
+   },
+   "ours_ils1": {
+    "label": "Our model + search (1 s)",
+    "travel_h": 2.914,
+    "gap_ctrl_pct": 1.53,
+    "late_pct": 0.0,
+    "runtime_s": 1.001
+   },
+   "ours_ils2": {
+    "label": "Our model + search (2 s)",
+    "travel_h": 2.906,
+    "gap_ctrl_pct": 1.07,
+    "late_pct": 0.0,
+    "runtime_s": 2.001
    },
    "ortools_fast": {
     "label": "OR-Tools (0.5 s)",
     "travel_h": 3.1487,
-    "gap_ctrl_pct": 13.0,
+    "gap_ctrl_pct": 13.35,
     "late_pct": 0.09,
     "runtime_s": 0.504,
-    "ours_wins": 187
+    "ours_wins": 187,
+    "ours_rival": "ours"
+   },
+   "ortools_1s": {
+    "label": "OR-Tools (1 s)",
+    "travel_h": 3.0717,
+    "gap_ctrl_pct": 9.23,
+    "late_pct": 0.05,
+    "runtime_s": 1.004,
+    "ours_wins": 193,
+    "ours_rival": "ours_ils1"
+   },
+   "ortools_2s": {
+    "label": "OR-Tools (2 s)",
+    "travel_h": 3.0506,
+    "gap_ctrl_pct": 8.15,
+    "late_pct": 0.04,
+    "runtime_s": 2.006,
+    "ours_wins": 194,
+    "ours_rival": "ours_ils2"
    },
    "pyvrp_fast": {
     "label": "PyVRP (0.5 s)",
     "travel_h": 2.9417,
-    "gap_ctrl_pct": 2.23,
+    "gap_ctrl_pct": 2.55,
     "late_pct": 0.0,
     "runtime_s": 0.529,
-    "ours_wins": 110
+    "ours_wins": 110,
+    "ours_rival": "ours"
    },
    "pyvrp_1s": {
     "label": "PyVRP (1 s)",
     "travel_h": 2.9233,
-    "gap_ctrl_pct": 1.34,
+    "gap_ctrl_pct": 1.66,
     "late_pct": 0.0,
     "runtime_s": 1.032,
-    "ours_wins": 70
+    "ours_wins": 123,
+    "ours_rival": "ours_ils1"
+   },
+   "pyvrp_2s": {
+    "label": "PyVRP (2 s)",
+    "travel_h": 2.9172,
+    "gap_ctrl_pct": 1.33,
+    "late_pct": 0.0,
+    "runtime_s": 2.044,
+    "ours_wins": 133,
+    "ours_rival": "ours_ils2"
    }
   }
  },

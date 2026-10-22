@@ -20,9 +20,35 @@ benchmarked against OR-Tools, PyVRP and **real delivery drivers** on ~9,000 Amaz
 | 0 | Repo, tooling, CI, data model, ETL, EDA | ✅ |
 | 1 | Baselines (NN, Clarke-Wright, OR-Tools, PyVRP) + evaluator + benchmark | ✅ |
 | 2 | Attention Model + POMO (REINFORCE) on TSP/CVRP, neural solver, synthetic benchmark | ✅ |
-| 3 | Time windows + calibrated generator + curriculum | |
+| 3 | Calibrated generator, customer-centric normalisation, time windows, local search, size curriculum, real-route evaluation | ✅ |
 | 4 | Real asymmetric travel times (MatNet-style), fine-tuning, ONNX | |
 | 5–7 | FastAPI + OSRM backend, Next.js/deck.gl frontend, deployment | |
+
+## Headline: 200 unseen real Amazon routes
+
+Evaluation split (routes never seen by the generator or any model), ~150 stops each, real
+asymmetric travel-time matrices and real time windows. The *controllable* gap excludes the
+unavoidable station round trip (~75 % of every route); see ADR-012.
+
+| Solver | Hours / route | Gap | Controllable gap | Late stops | Runtime |
+|---|---|---|---|---|---|
+| PyVRP (10 s) | 2.90 | 0.25 % | 0.36 % | 0 % | 10 s |
+| **Attention (Amazon, 100) + local search** | **2.98** | **2.91 %** | **4.32 %** | 0.07 % | **0.9 s** |
+| OR-Tools (10 s) | 2.99 | 3.28 % | 4.98 % | 0 % | 10 s |
+| Savings + local search | 3.01 | 4.14 % | 6.51 % | 0.44 % | 0.01 s |
+| **Real driver** | 3.28 | 13.96 % | 22.2 % | 0.09 % | — |
+| Attention (Amazon, 150) without local search | 3.61 | 24.73 % | 37.93 % | 0.25 % | 0.8 s |
+
+* The hybrid cuts **9 % of driving time against the real drivers** (3.28 h → 2.98 h per route) and
+  beats OR-Tools given 10 s in under a second.
+* On real roads **the network alone is weak** (38 % controllable gap vs ~3.6 % on synthetic
+  Amazon-like data): it reasons on straight-line geometry while real streets are asymmetric and
+  indirect, and local search on the real matrix recovers most of the gap. Feeding the real matrix
+  to the encoder is the goal of phase 4.
+* Size curriculum (50 → 100 → 150, ADR-016): the 100-stop model is best (4.32 %); the 150 stage
+  did not improve on it. Real time windows are never a problem (≤ 0.13 % late stops).
+
+Full table with every model: [`results/route_evaluation_n200_final.md`](results/route_evaluation_n200_final.md).
 
 ## Baseline results
 

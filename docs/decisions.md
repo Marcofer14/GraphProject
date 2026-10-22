@@ -158,6 +158,23 @@ time-aware model is kept for phase 4 (e.g. retrain with realistic tightness and 
 `init_from` compares model configs with defaults filled in, so checkpoints saved before an
 option existed remain valid starting points.
 
+## ADR-016 · Size curriculum and the real-route evaluation that closes phase 3 (2026-10-22)
+Curriculum: `cvrp50_pomo_amazon` → `cvrp100_amazon` (25 epochs, 50 min, controllable validation
+length −0.9 %) → `cvrp150_amazon` (12 epochs, 33 min, −0.5 %, early-stopped). Both stages started
+close to their final quality: the 50-stop model trained on the calibrated generator already
+transferred to larger sizes. The 150 stage's validation curve is noise (±0.2 %) around a flat line,
+which says the fine-tuning stages needed a larger validation set (200 instances was too few at
+150 stops) and a lower learning rate; recorded for phase 4.
+
+Final evaluation, 200 routes from the *evaluation* split, real matrices and windows:
+the 100-stop model + local search is best among neural variants (4.32 % controllable gap, 0.9 s),
+ahead of OR-Tools with 10 s (4.98 %) and the real drivers (22.2 %), behind PyVRP with 10 s
+(0.36 %). The 150-stop model (5.88 %) is no better than the 50-stop one (5.96 %). **The network
+alone reaches only 37.9 %** on real routes against ~3.6 % on Amazon-like synthetic data, so most
+of the real-road quality comes from local search on the true matrix: the policy's Euclidean view
+of an asymmetric street network is the main limitation, and the reason phase 4 starts with a
+matrix-aware encoder. The 100-stop model is the phase-3 reference model.
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

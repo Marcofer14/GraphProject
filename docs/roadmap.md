@@ -1,4 +1,13 @@
-# Roadmap · phase 3 (weeks 5–6)
+# Roadmap · phase 3 (weeks 5–6) — ✅ closed 2026-10-22
+
+**Outcome** (ADR-016): on 200 unseen real Amazon routes the hybrid (100-stop Amazon model + local
+search) cuts 9 % of driving time against real drivers and beats OR-Tools (10 s) in 0.9 s; the
+network alone is weak on real streets, which sets the first goal of phase 4.
+
+**Carried into phase 4:** matrix-aware encoder (MatNet-style) · fine-tuning on real route slices ·
+larger validation sets and lower learning rate for fine-tuning stages · retrain the time-aware
+model with realistic window tightness and a lower penalty · faster decoding (CUDA Graphs /
+`torch.compile`) · ONNX export · driver-similarity metric · neural station-day assignment.
 
 Long jobs (GPU / wall-clock) start first so the GPUs are never idle while code is written.
 

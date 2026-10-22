@@ -30,6 +30,11 @@ class ModelConfig:
     # from the customer centroid, bounded even when customer-centric normalisation puts the
     # depot far outside the square
     depot_encoding: str = "xy"
+    # node windows/service + current time as inputs (CVRPTW). Off keeps old checkpoints loadable
+    time_features: bool = False
+
+
+TIME_CAP = 1e3  # "no window" end, in normalised time units, before log scaling
 
 
 class Norm(nn.Module):
@@ -80,12 +85,32 @@ class AttentionPolicy(nn.Module):
         if cfg.depot_encoding not in ("xy", "polar"):
             raise ValueError(f"unknown depot_encoding {cfg.depot_encoding!r}")
         self.embed_depot = nn.Linear(2 if cfg.depot_encoding == "xy" else 3, D)
-        self.embed_node = nn.Linear(3, D)  # x, y, demand
+        # x, y, demand [+ has_window, window start, window end, service]
+        self.embed_node = nn.Linear(7 if cfg.time_features else 3, D)
         self.layers = nn.ModuleList(EncoderLayer(cfg) for _ in range(cfg.num_layers))
         self.project_nodes = nn.Linear(D, 3 * D, bias=False)  # glimpse K, V and logit K
         self.project_graph = nn.Linear(D, D, bias=False)
-        self.project_step = nn.Linear(2 * D + 1, D, bias=False)  # current, first, capacity left
+        # current node, first node, capacity left [+ current time]
+        self.project_step = nn.Linear(2 * D + (2 if cfg.time_features else 1), D, bias=False)
         self.project_out = nn.Linear(D, D, bias=False)
+
+    def node_features(self, batch: Batch) -> Tensor:
+        """(B, N, 3|7) customer inputs. Times are log-scaled: windows (hundreds of units) dwarf
+        tour lengths (tens). A batch without times reads as 'no window, no service'."""
+        base = torch.cat([batch.locs[:, 1:], batch.demand[:, 1:, None]], dim=-1)
+        if not self.cfg.time_features:
+            return base
+        B, N = batch.size, batch.num_customers
+        if batch.tw is None or batch.service is None:
+            tw = torch.tensor([0.0, math.inf], device=base.device).expand(B, N, 2)
+            service = torch.zeros(B, N, device=base.device)
+        else:
+            tw, service = batch.tw[:, 1:], batch.service[:, 1:]
+        has_window = torch.isfinite(tw[..., 1]).float()
+        start = torch.log1p(tw[..., 0].clamp(max=TIME_CAP))
+        end = torch.log1p(tw[..., 1].clamp(max=TIME_CAP))
+        extra = torch.stack([has_window, start, end, torch.log1p(service)], dim=-1)
+        return torch.cat([base, extra], dim=-1)
 
     def depot_features(self, batch: Batch) -> Tensor:
         """(B, 1, 2|3) input features of the depot."""
@@ -98,7 +123,7 @@ class AttentionPolicy(nn.Module):
 
     def encode(self, batch: Batch) -> Tensor:
         depot = self.embed_depot(self.depot_features(batch))
-        nodes = self.embed_node(torch.cat([batch.locs[:, 1:], batch.demand[:, 1:, None]], -1))
+        nodes = self.embed_node(self.node_features(batch))
         h = torch.cat([depot, nodes], dim=1)
         for layer in self.layers:
             h = layer(h)
@@ -110,11 +135,14 @@ class AttentionPolicy(nn.Module):
         num_starts: int,
         decode: str = "sample",
         forced_starts: bool = True,
+        tw_penalty: float = 0.0,
     ) -> tuple[Tensor, Tensor, Tensor]:
         """Build ``num_starts`` tours per instance.
 
-        Returns ``(length (B, P), log_prob (B, P), actions (B, P, T))``. With ``forced_starts``
-        trajectory p starts at customer p + 1 (POMO); otherwise the first move is decoded too.
+        Returns ``(cost (B, P), log_prob (B, P), actions (B, P, T))`` where cost is the tour
+        length plus ``tw_penalty`` x lateness (just the length without windows). With
+        ``forced_starts`` trajectory p starts at customer p + 1 (POMO); otherwise the first move
+        is decoded too.
         """
         cfg = self.cfg
         B, n1, D, H = batch.size, batch.num_customers + 1, cfg.embed_dim, cfg.num_heads
@@ -141,8 +169,10 @@ class AttentionPolicy(nn.Module):
         while not env.all_done:
             mask = env.mask()
             cur, start = h[bidx, env.cur], h[bidx, first]  # (B, P, D)
-            cap_left = (1.0 - env.used).unsqueeze(-1)
-            q = graph + self.project_step(torch.cat([cur, start, cap_left], -1))  # (B, P, D)
+            context = [cur, start, (1.0 - env.used).unsqueeze(-1)]
+            if cfg.time_features:
+                context.append(torch.log1p(env.time).unsqueeze(-1))
+            q = graph + self.project_step(torch.cat(context, -1))  # (B, P, D)
             qh = q.view(B, P, H, D // H).transpose(1, 2)  # (B, H, P, dk)
             glimpse = F.scaled_dot_product_attention(qh, gk, gv, attn_mask=~mask[:, None])
             g = self.project_out(glimpse.transpose(1, 2).reshape(B, P, D))
@@ -162,4 +192,5 @@ class AttentionPolicy(nn.Module):
             env.step(action)
             actions.append(action)
 
-        return env.length, log_prob, torch.stack(actions, dim=-1)
+        cost = env.length + tw_penalty * env.lateness if tw_penalty else env.length
+        return cost, log_prob, torch.stack(actions, dim=-1)

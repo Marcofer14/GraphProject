@@ -1,0 +1,18 @@
+# CVRP-50 with soft time windows on the Amazon-calibrated distribution (docs/design/time_windows.md).
+# Customer-centric normalisation + polar depot (ADR-012). Real windows (~8 h) rarely bind, so they
+# are shrunk to 25 % for training: ~65 % of instances then have a late stop under a naive order,
+# enough signal to learn the behaviour. Evaluate on both real (1.0) and tight (0.25) windows.
+defaults:
+  - cvrp50_amazon
+  - _self_
+
+data:
+  time_windows: true
+  tw_tightness: 0.25
+
+model:
+  time_features: true
+
+train:
+  tag: cvrptw50_pomo_amazon
+  tw_penalty: 10.0

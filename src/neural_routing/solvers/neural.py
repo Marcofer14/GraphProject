@@ -59,15 +59,36 @@ def planar_km(instance: VRPInstance) -> np.ndarray:
     return np.column_stack([lng * 111.32 * np.cos(lat0), lat * 110.574])
 
 
-def to_batch(instance: VRPInstance, device: str, normalisation: str = "all") -> Batch:
+def seconds_per_unit(instance: VRPInstance, locs: np.ndarray) -> float:
+    """Least-squares speed: travel seconds per unit of normalised Euclidean distance.
+
+    Fits ``durations ~ s * euclid(locs)`` through the origin, so times from the real matrix
+    become comparable with the distances the policy sees.
+    """
+    E = np.linalg.norm(locs[:, None] - locs[None], axis=-1)
+    off = ~np.eye(len(locs), dtype=bool)
+    num, den = float((instance.durations[off] * E[off]).sum()), float((E[off] ** 2).sum())
+    return num / den if den > 0 else 1.0
+
+
+def to_batch(
+    instance: VRPInstance, device: str, normalisation: str = "all", with_time: bool = False
+) -> Batch:
     xy = torch.tensor(planar_km(instance)[None], dtype=torch.float32)
     locs, _ = normalise(xy, normalisation)
     tsp = not math.isfinite(instance.capacity)
     demand = np.zeros(instance.num_nodes) if tsp else instance.demands / instance.capacity
+    service = tw = None
+    if with_time:
+        s = seconds_per_unit(instance, locs[0].double().numpy())
+        service = torch.tensor(instance.service_times[None] / s, dtype=torch.float32, device=device)
+        tw = torch.tensor(instance.time_windows[None] / s, dtype=torch.float32, device=device)
     return Batch(
         locs.to(device),
         torch.tensor(demand[None], dtype=torch.float32, device=device),
         tsp,
+        service,
+        tw,
     )
 
 
@@ -80,12 +101,18 @@ class AttentionSolver(Solver):
         multistart: bool = True,
         device: str | None = None,
         polish_top: int = 0,
+        tw_penalty: float = 10.0,
     ) -> None:
         self.checkpoint = checkpoint
         self.augment = augment
         self.multistart = multistart
         self.device = device or ("cuda" if torch.cuda.is_available() else "cpu")
         self.polish_top = polish_top  # local-search the k best decoded candidates
+        self.tw_penalty = tw_penalty  # seconds of travel one second of lateness is worth
+
+    def _objective(self, instance: VRPInstance, routes: list[list[int]]) -> float:
+        m = evaluate(instance, Solution.from_lists(routes))
+        return m.travel_time_s + self.tw_penalty * m.lateness_s
 
     def _checkpoint_for(self, instance: VRPInstance) -> str:
         if self.checkpoint:
@@ -103,25 +130,24 @@ class AttentionSolver(Solver):
     @torch.no_grad()
     def _solve(self, instance: VRPInstance, time_limit: float) -> list[list[int]]:
         policy, normalisation = _load(self._checkpoint_for(instance), self.device)
-        batch = to_batch(instance, self.device, normalisation)
+        timed = policy.cfg.time_features and instance.has_time_windows
+        batch = to_batch(instance, self.device, normalisation, with_time=timed)
         if self.augment:
             batch = augment8(batch)
         P = instance.num_customers if self.multistart else 1
         _, _, actions = policy(batch, P, decode="greedy", forced_starts=self.multistart)
         candidates = actions.reshape(-1, actions.shape[-1]).tolist()
-        # score each distinct candidate with the real matrix
+        # score each distinct candidate on the real matrix: travel + penalty x lateness
         scored = []
         for acts in {tuple(a) for a in candidates}:
             routes = split_routes(list(acts))
-            scored.append((evaluate(instance, Solution.from_lists(routes)).travel_time_s, routes))
+            scored.append((self._objective(instance, routes), routes))
         scored.sort(key=lambda c: c[0])
         if self.polish_top:
             from neural_routing.solvers.local_search import polish
 
             polished = [polish(instance, r) for _, r in scored[: self.polish_top]]
-            return min(
-                polished, key=lambda r: evaluate(instance, Solution.from_lists(r)).travel_time_s
-            )
+            return min(polished, key=lambda r: self._objective(instance, r))
         return scored[0][1]
 
 

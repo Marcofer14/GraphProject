@@ -37,7 +37,8 @@ flowchart LR
 | Calibrated generator ✅ (matches real slices, notebook 02) | nothing | realistic training data | CPU |
 | Customer-centric normalisation ✅ (tie with old one at 50 stops; adopted, ADR-012) | — | training on the real distribution | done |
 | Early stopping on controllable length ✅ (ADR-013) | — | fair stopping on Amazon-like data | done |
-| Time windows: design ✅ (`docs/design/time_windows.md`) · implementation | — | CVRPTW training | CPU, ~3 h |
+| Time windows ✅ (env + model + inference + benchmark, ADR-014) | — | CVRPTW training | done |
+| Train CVRPTW-50 (`cvrptw50_amazon`) | — | curriculum with windows | GPU, ~2–3 h |
 | Time windows (env + model) | nothing | CVRPTW training | CPU, then GPU tests |
 | CVRPTW-50 | generator + time windows | curriculum with windows | GPU |
 | CVRP-100 ✅ (1.34 % with local search; stopped at epoch 55) | — | warm start for the curriculum | done |

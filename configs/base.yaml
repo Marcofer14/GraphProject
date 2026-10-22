@@ -7,6 +7,8 @@ data:
   generator_params: configs/generator/amazon.json
   stops_per_vehicle: null # amazon only: rescale demands so a van holds ~this many stops
   normalisation: all      # all | customers (scale by the customers' box; use model.depot_encoding=polar)
+  time_windows: false     # amazon only: service times + soft windows in the env (set model.time_features)
+  tw_tightness: 1.0       # scale window widths; real ones (~8 h) rarely bind, < 1 makes them bind
 
 model:
   embed_dim: 128
@@ -26,6 +28,7 @@ train:
   lr: 1.0e-4
   weight_decay: 1.0e-6
   grad_clip: 1.0
+  tw_penalty: 10.0        # cost of one time unit late, in distance units (same as OR-Tools here)
   val_size: 1000
   log_every: 20
   seed: 0

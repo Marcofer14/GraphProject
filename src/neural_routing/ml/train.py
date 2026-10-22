@@ -31,7 +31,7 @@ from omegaconf import DictConfig, OmegaConf
 from torch.utils.tensorboard import SummaryWriter
 
 from neural_routing.ml.env import Batch, augment8, generate
-from neural_routing.ml.generators import generate_amazon_like, load_params
+from neural_routing.ml.generators import generate_amazon_like, load_params, with_times
 from neural_routing.ml.model import AttentionPolicy, ModelConfig
 
 log = logging.getLogger(__name__)
@@ -40,19 +40,24 @@ CONFIG_DIR = Path(__file__).resolve().parents[3] / "configs"
 
 @torch.no_grad()
 def evaluate_policy(
-    policy: AttentionPolicy, data: Batch, multistart: bool, augment: bool = False, chunk: int = 250
+    policy: AttentionPolicy,
+    data: Batch,
+    multistart: bool,
+    augment: bool = False,
+    chunk: int = 250,
+    tw_penalty: float = 0.0,
 ) -> torch.Tensor:
     """Greedy decoding; best over POMO starts and/or the 8 augmentations. Returns (B,) lengths."""
     was_training = policy.training
     policy.eval()
     out = []
     for i in range(0, data.size, chunk):
-        part = Batch(data.locs[i : i + chunk], data.demand[i : i + chunk], data.tsp)
+        part = data.slice(i, i + chunk)
         b = part.size
         if augment:
             part = augment8(part)
         P = part.num_customers if multistart else 1
-        length, _, _ = policy(part, P, decode="greedy", forced_starts=multistart)
+        length, _, _ = policy(part, P, "greedy", multistart, tw_penalty)
         best = length.min(1).values
         if augment:
             best = best.view(8, b).min(0).values
@@ -171,15 +176,24 @@ def make_sampler(
     data = cfg.get("data") or {}
     distribution = data.get("distribution", "uniform")
     n, problem = cfg.num_customers, cfg.problem
+    if data.get("time_windows") and distribution != "amazon":
+        raise ValueError("data.time_windows needs data.distribution=amazon")
     if distribution == "uniform":
         return lambda size, gen: generate(size, n, problem, device, gen)
     if distribution == "amazon":
         params = load_params(data.get("generator_params", "configs/generator/amazon.json"))
         spv = data.get("stops_per_vehicle")
         norm = data.get("normalisation", "all")
-        return lambda size, gen: generate_amazon_like(
-            size, n, problem, device, gen, params, spv, norm
-        )[0]
+        timed = bool(data.get("time_windows", False))
+        tightness = float(data.get("tw_tightness", 1.0))
+
+        def amazon(size: int, gen: torch.Generator | None) -> Batch:
+            batch, times = generate_amazon_like(
+                size, n, problem, device, gen, params, spv, norm, tightness
+            )
+            return with_times(batch, times) if timed else batch
+
+        return amazon
     raise ValueError(f"unknown data.distribution {distribution!r}")
 
 
@@ -196,6 +210,7 @@ def train(cfg: DictConfig) -> Path:
     torch.manual_seed(t_cfg.seed)
     n, problem = cfg.num_customers, cfg.problem
     pomo = t_cfg.baseline == "pomo"
+    pen = float(t_cfg.get("tw_penalty", 0.0))  # cost = length + pen * lateness (windows only)
     starts = t_cfg.num_starts or n
 
     policy = AttentionPolicy(ModelConfig(**cfg.model)).to(device)
@@ -207,7 +222,7 @@ def train(cfg: DictConfig) -> Path:
     baseline_val = float("inf")
     if not pomo:
         baseline_policy = copy.deepcopy(policy).eval()
-        baseline_val = evaluate_policy(baseline_policy, val, multistart=False).mean().item()
+        baseline_val = evaluate_policy(baseline_policy, val, False, tw_penalty=pen).mean().item()
 
     run_dir = Path(t_cfg.run_dir)
     ckpt_dir = Path(t_cfg.checkpoint_dir)
@@ -230,7 +245,9 @@ def train(cfg: DictConfig) -> Path:
         t0 -= history[-1]["elapsed_s"] if history else 0.0
         if baseline_policy is not None:
             baseline_policy.load_state_dict(policy.state_dict())
-            baseline_val = evaluate_policy(baseline_policy, val, multistart=False).mean().item()
+            baseline_val = (
+                evaluate_policy(baseline_policy, val, False, tw_penalty=pen).mean().item()
+            )
         log.info("resumed %s at epoch %d (best val %.4f)", resume_path, start_epoch, best_val)
 
     params = sum(p.numel() for p in policy.parameters())
@@ -256,13 +273,13 @@ def train(cfg: DictConfig) -> Path:
         for _ in range(t_cfg.steps_per_epoch):
             batch = sample(t_cfg.batch_size, None)
             if pomo:
-                length, logp, _ = policy(batch, starts, decode="sample", forced_starts=True)
+                length, logp, _ = policy(batch, starts, "sample", True, pen)
                 advantage = length - length.mean(dim=1, keepdim=True)
             else:
                 assert baseline_policy is not None
-                length, logp, _ = policy(batch, 1, decode="sample", forced_starts=False)
+                length, logp, _ = policy(batch, 1, "sample", False, pen)
                 with torch.no_grad():
-                    bl, _, _ = baseline_policy(batch, 1, decode="greedy", forced_starts=False)
+                    bl, _, _ = baseline_policy(batch, 1, "greedy", False, pen)
                 advantage = length - bl
             loss = (advantage.detach() * logp).mean()
             opt.zero_grad(set_to_none=True)
@@ -275,9 +292,13 @@ def train(cfg: DictConfig) -> Path:
                 writer.add_scalar("train/length", length.mean().item(), step)
                 writer.add_scalar("train/grad_norm", grad_norm.item(), step)
 
-        val_len = evaluate_policy(policy, val, multistart=pomo).mean().item()
+        val_len = evaluate_policy(policy, val, multistart=pomo, tw_penalty=pen).mean().item()
         if baseline_policy is not None:
-            cand = val_len if not pomo else evaluate_policy(policy, val, False).mean().item()
+            cand = (
+                val_len
+                if not pomo
+                else evaluate_policy(policy, val, False, tw_penalty=pen).mean().item()
+            )
             if cand < baseline_val:
                 baseline_policy.load_state_dict(policy.state_dict())
                 baseline_val = cand

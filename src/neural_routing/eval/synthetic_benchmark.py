@@ -35,9 +35,18 @@ NEURAL = {"attention", "attention_greedy", "attention_ls"}
 DEFAULT_CONFIGS = ["nearest_neighbor", "savings", "ortools:1", "pyvrp:2", "attention"]
 
 
-def build(problem: str, size: int, seed: int, distribution: str = "uniform") -> VRPInstance:
+def build(
+    problem: str,
+    size: int,
+    seed: int,
+    distribution: str = "uniform",
+    time_windows: bool = False,
+    tw_tightness: float = 1.0,
+) -> VRPInstance:
     if distribution == "amazon":
-        return build_amazon_like(problem, size, seed)
+        return build_amazon_like(problem, size, seed, time_windows, tw_tightness)
+    if time_windows:
+        raise ValueError("time windows are only generated for --distribution amazon")
     cap = math.inf if problem == "tsp" else default_capacity(size)
     inst = random_instance(size, seed=seed, capacity=cap, service_time=0.0)
     return VRPInstance(
@@ -46,34 +55,43 @@ def build(problem: str, size: int, seed: int, distribution: str = "uniform") -> 
     )  # fmt: skip
 
 
-def build_amazon_like(problem: str, size: int, seed: int) -> VRPInstance:
+def build_amazon_like(
+    problem: str, size: int, seed: int, time_windows: bool = False, tw_tightness: float = 1.0
+) -> VRPInstance:
     """One calibrated instance (``ml.generators``) as a planar Euclidean VRPInstance.
 
     Coordinates use the depot-inclusive scaling, but any rescaling would do: every solver either
     works on the matrix or (neural) renormalises the coordinates the way its checkpoint expects,
-    and gaps are relative. Time windows are left out until the solvers handle them.
+    and gaps are relative. Time is in the same unit as distance (speed 1), scaled with it.
     """
-    batch, _ = generate_amazon_like(1, size, problem, generator=torch.Generator().manual_seed(seed))
-    xy = batch.locs[0].double().numpy() * 1000  # ~integer resolution for OR-Tools/PyVRP
+    batch, times = generate_amazon_like(
+        1, size, problem, generator=torch.Generator().manual_seed(seed), tw_tightness=tw_tightness
+    )
+    scale = 1000.0  # ~integer resolution for OR-Tools/PyVRP
+    xy = batch.locs[0].double().numpy() * scale
     n1 = size + 1
     demand = batch.demand[0].double().numpy()
     cap = math.inf if problem == "tsp" else 1.0
+    service, tw = np.zeros(n1), np.tile([0.0, np.inf], (n1, 1))
+    if time_windows:
+        service = times.service[0].double().numpy() * scale
+        tw = times.tw[0].double().numpy() * scale
     return VRPInstance(
         name=f"amazon_{problem}{size}_{seed}",
         coords=xy,
         durations=np.linalg.norm(xy[:, None] - xy[None], axis=-1),
         demands=demand,
-        service_times=np.zeros(n1),
-        time_windows=np.tile([0.0, np.inf], (n1, 1)),
+        service_times=service,
+        time_windows=tw,
         capacity=cap,
         num_vehicles=1 if problem == "tsp" else max(1, math.ceil(demand.sum())),
     )
 
 
 def _job(
-    problem: str, size: int, seed: int, configs: list[str], distribution: str = "uniform"
+    problem: str, size: int, seed: int, configs: list[str], *build_args: Any
 ) -> list[dict[str, Any]]:
-    return run_instance(build(problem, size, seed, distribution), configs)
+    return run_instance(build(problem, size, seed, *build_args), configs)
 
 
 def main() -> None:
@@ -82,6 +100,8 @@ def main() -> None:
     )
     parser.add_argument("--problem", choices=["tsp", "cvrp"], default="tsp")
     parser.add_argument("--distribution", choices=["uniform", "amazon"], default="uniform")
+    parser.add_argument("--time-windows", action="store_true", help="amazon only: keep windows")
+    parser.add_argument("--tw-tightness", type=float, default=1.0, help="scale window widths")
     parser.add_argument("--size", type=int, default=20)
     parser.add_argument("--n", type=int, default=200)
     parser.add_argument("--configs", nargs="+", default=DEFAULT_CONFIGS)
@@ -106,25 +126,32 @@ def main() -> None:
         if ckpt:
             kwargs[cfg] = {"checkpoint": ckpt}
     dist = args.distribution
+    build_args = (dist, args.time_windows, args.tw_tightness)
     seeds = range(args.seed, args.seed + args.n)
     rows: list[dict[str, Any]] = []
 
     if neural:  # warm up CUDA and load the checkpoints outside the timed region
-        warm = build(args.problem, args.size, 0, dist)
+        warm = build(args.problem, args.size, 0, *build_args)
         for cfg in neural:
             get_solver(parse_config(cfg)[0], **kwargs.get(cfg, {})).solve(warm)
         for s in tqdm(seeds, desc="neural"):
-            rows += run_instance(build(args.problem, args.size, s, dist), neural, kwargs)
+            rows += run_instance(build(args.problem, args.size, s, *build_args), neural, kwargs)
 
     if classic:
         with ProcessPoolExecutor(args.workers) as pool:
-            futures = [pool.submit(_job, args.problem, args.size, s, classic, dist) for s in seeds]
+            futures = [
+                pool.submit(_job, args.problem, args.size, s, classic, *build_args) for s in seeds
+            ]
             for f in tqdm(as_completed(futures), total=len(futures), desc="classic"):
                 rows += f.result()
 
     df = add_gaps(pd.DataFrame(rows))
-    summary = summarize(df).drop(columns=["late_stops_%"])
+    summary = summarize(df)
+    if not args.time_windows:
+        summary = summary.drop(columns=["late_stops_%"])
     prefix = "synthetic" if dist == "uniform" else f"synthetic_{dist}"
+    if args.time_windows:
+        prefix += f"_tw{args.tw_tightness:g}"
     tag = f"{prefix}_{args.problem}{args.size}{'_' + args.tag if args.tag else ''}"
     (args.out / "raw").mkdir(parents=True, exist_ok=True)
     df.to_parquet(args.out / "raw" / f"{tag}.parquet", index=False)

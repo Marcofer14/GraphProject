@@ -82,9 +82,12 @@ def generate_amazon_like(
     params: GeneratorParams | None = None,
     stops_per_vehicle: float | None = None,
     normalisation: str = "all",
+    tw_tightness: float = 1.0,
 ) -> tuple[Batch, TimeFeatures]:
     """``stops_per_vehicle`` rescales demands so a van fills up after that many average stops
-    (None keeps the real, almost never binding, demands). See :func:`normalise`."""
+    (None keeps the real, almost never binding, demands). ``tw_tightness`` scales window widths
+    (real windows are ~8 h and rarely bind; < 1 makes them bind during training).
+    See :func:`normalise`. The returned batch carries no times; use :func:`with_times`."""
     p = params or load_params()
     B, N, g = batch_size, num_customers, generator
 
@@ -122,13 +125,18 @@ def generate_amazon_like(
     tw[..., 1] = math.inf
     has_tw = torch.rand(B, N, generator=g) < p.tw_probability
     start = _from_quantiles(p.tw_start_s_quantiles, (B, N), g).clamp(min=0)
-    end = start + _from_quantiles(p.tw_width_s_quantiles, (B, N), g)
+    end = start + _from_quantiles(p.tw_width_s_quantiles, (B, N), g) * tw_tightness
     tw[:, 1:, 0] = torch.where(has_tw, start, torch.zeros_like(start))
     tw[:, 1:, 1] = torch.where(has_tw, end, torch.full_like(end, math.inf))
     times = TimeFeatures(
         service / seconds_per_unit[:, None], tw / seconds_per_unit[:, None, None], seconds_per_unit
     )
     return Batch(locs, demand, problem == "tsp").to(device), times.to(device)
+
+
+def with_times(batch: Batch, times: TimeFeatures) -> Batch:
+    """Attach service times and windows so the environment and model use them."""
+    return Batch(batch.locs, batch.demand, batch.tsp, times.service, times.tw)
 
 
 def sample_real(

@@ -10,6 +10,7 @@ customer is served, so the tour is depot -> all customers -> depot.
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 
 import numpy as np
@@ -30,6 +31,9 @@ class Batch:
     locs: Tensor  # (B, N+1, 2) in the unit square
     demand: Tensor  # (B, N+1) as a fraction of vehicle capacity; demand[:, 0] == 0
     tsp: bool
+    # optional time windows, in normalised time units (driving 1 distance unit takes 1 unit)
+    service: Tensor | None = None  # (B, N+1); depot 0
+    tw: Tensor | None = None  # (B, N+1, 2) [earliest, latest]; no window = [0, inf]
 
     @property
     def size(self) -> int:
@@ -39,8 +43,22 @@ class Batch:
     def num_customers(self) -> int:
         return int(self.locs.shape[1]) - 1
 
+    @property
+    def has_time(self) -> bool:
+        return self.tw is not None
+
+    def _map(self, fn: Callable[[Tensor], Tensor]) -> Batch:
+        return Batch(
+            fn(self.locs), fn(self.demand), self.tsp,
+            None if self.service is None else fn(self.service),
+            None if self.tw is None else fn(self.tw),
+        )  # fmt: skip
+
     def to(self, device: torch.device | str) -> Batch:
-        return Batch(self.locs.to(device), self.demand.to(device), self.tsp)
+        return self._map(lambda t: t.to(device))
+
+    def slice(self, start: int, stop: int) -> Batch:
+        return self._map(lambda t: t[start:stop])
 
 
 def generate(
@@ -69,7 +87,12 @@ def augment8(batch: Batch) -> Batch:
     variants = [(x, y), (y, x), (1 - x, y), (y, 1 - x), (x, 1 - y), (1 - y, x), (1 - x, 1 - y),
                 (1 - y, 1 - x)]  # fmt: skip
     locs = torch.cat([torch.cat(v, dim=-1) for v in variants], dim=0)
-    return Batch(locs, batch.demand.repeat(8, 1), batch.tsp)
+
+    def rep(t: Tensor | None) -> Tensor | None:
+        return None if t is None else t.repeat(8, *([1] * (t.dim() - 1)))
+
+    # times are invariant under the symmetries: just repeat them with the demands
+    return Batch(locs, batch.demand.repeat(8, 1), batch.tsp, rep(batch.service), rep(batch.tw))
 
 
 class RoutingEnv:
@@ -83,13 +106,24 @@ class RoutingEnv:
         self.used = torch.zeros(B, num_starts, device=dev)  # load since the last depot visit
         self.length = torch.zeros(B, num_starts, device=dev)
         self.done = torch.zeros(B, num_starts, dtype=torch.bool, device=dev)
+        # soft time windows (same semantics as core.evaluate): clock of the current vehicle,
+        # reset at every depot visit; arriving early waits, arriving late accumulates lateness
+        self.time = torch.zeros(B, num_starts, device=dev)
+        self.lateness = torch.zeros(B, num_starts, device=dev)
 
     def _gather_locs(self, idx: Tensor) -> Tensor:
         return self.batch.locs.gather(1, idx.unsqueeze(-1).expand(*idx.shape, 2))
 
     def step(self, action: Tensor) -> None:
         """action: (B, P) node indices. Finished trajectories must pick the depot (cost 0)."""
-        self.length += (self._gather_locs(action) - self._gather_locs(self.cur)).norm(dim=-1)
+        leg = (self._gather_locs(action) - self._gather_locs(self.cur)).norm(dim=-1)
+        self.length += leg
+        if self.batch.tw is not None and self.batch.service is not None:
+            tw = self.batch.tw.gather(1, action.unsqueeze(-1).expand(*action.shape, 2))
+            start = torch.maximum(self.time + leg, tw[..., 0])
+            self.lateness += (start - tw[..., 1]).clamp(min=0)
+            served = start + self.batch.service.gather(1, action)
+            self.time = torch.where(action == 0, torch.zeros_like(served), served)
         demand = self.batch.demand.gather(1, action)
         self.used = torch.where(action == 0, torch.zeros_like(self.used), self.used + demand)
         self.visited.scatter_(-1, action.unsqueeze(-1), True)

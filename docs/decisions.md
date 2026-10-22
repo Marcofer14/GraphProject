@@ -124,6 +124,19 @@ runs stopped early. Early stopping now judges `val - unavoidable_cost(val)`, whe
 cost is the mean of 2 x depot-to-nearest-customer (a true lower bound on every tour). On uniform
 data the correction is negligible (0.15 of 10.65).
 
+## ADR-014 · Soft time windows in the neural solver (2026-10-21)
+Implements `docs/design/time_windows.md`. `Batch` optionally carries service times and windows in
+normalised time units (speed 1); `RoutingEnv` keeps a per-vehicle clock (reset at each depot
+visit) and accumulates lateness with exactly the evaluator's semantics, which a test checks on
+random rollouts with tight windows (TSP and multi-vehicle CVRP). The policy returns
+`length + tw_penalty x lateness` as its cost; with `model.time_features` it also reads
+(has window, log start, log end, log service) per node and log(current time) in the decoder
+context, while models without it still load and run. At inference the instance's speed is fitted
+by least squares (matrix seconds vs normalised Euclidean distance) to convert real windows, and
+candidates are chosen on `travel + tw_penalty x lateness`. Training uses windows shrunk to 25 %
+(`data.tw_tightness`) because real ones rarely bind: under a naive visiting order only 8 % of
+instances are late at 1.0, 65 % at 0.25. Smoke run: validation cost 51.3 -> 32.0 in 80 steps.
+
 ## ADR-006 · Data and virtualenv outside OneDrive
 The repository lives in a OneDrive-synced folder. `.venv/` and `data/` are directory junctions to
 `%USERPROFILE%\neural-routing-data\` so gigabytes of data and packages never sync. Both paths are

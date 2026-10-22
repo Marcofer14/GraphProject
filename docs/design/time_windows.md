@@ -1,6 +1,7 @@
 # Design · time windows in the neural solver (phase 3, step 4)
 
-Status: proposed, not implemented. Goal: train and run the policy on CVRPTW with the same *soft*
+Status: **implemented** 2026-10-21 (ADR-014), all five steps; training run pending.
+Goal: train and run the policy on CVRPTW with the same *soft*
 window semantics the evaluator already uses (ADR-002), so neural, classic and real-driver
 solutions stay comparable.
 

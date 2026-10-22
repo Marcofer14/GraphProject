@@ -35,6 +35,37 @@
             "presentation": { "panel": "dedicated", "reveal": "always" }
         },
         {
+            "label": "Train: CVRPTW-50 Amazon (time windows, ~2-3 h)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.ml.train", "--config-name", "cvrptw50_amazon"],
+            "problemMatcher": [],
+            "presentation": { "panel": "dedicated", "reveal": "always" }
+        },
+        {
+            "label": "Bench: CVRPTW-50 (tight windows 0.25)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.eval.synthetic_benchmark", "--distribution", "amazon",
+                     "--time-windows", "--tw-tightness", "0.25", "--problem", "cvrp", "--size", "50",
+                     "--n", "200", "--workers", "6", "--configs", "pyvrp:10", "ortools:10",
+                     "savings_ls",
+                     "attention_ls@checkpoints/cvrptw50_pomo_amazon.pt",
+                     "attention_ls@checkpoints/cvrp50_pomo_amazon.pt"],
+            "problemMatcher": []
+        },
+        {
+            "label": "Bench: CVRPTW-50 (real windows 1.0)",
+            "type": "shell",
+            "command": "${workspaceFolder}/.venv/Scripts/python.exe",
+            "args": ["-m", "neural_routing.eval.synthetic_benchmark", "--distribution", "amazon",
+                     "--time-windows", "--tw-tightness", "1.0", "--problem", "cvrp", "--size", "50",
+                     "--n", "200", "--workers", "6", "--configs", "pyvrp:10", "savings_ls",
+                     "attention_ls@checkpoints/cvrptw50_pomo_amazon.pt",
+                     "attention_ls@checkpoints/cvrp50_pomo_amazon.pt"],
+            "problemMatcher": []
+        },
+        {
             "label": "Experiment A: train CVRP-50 Amazon (customer-centric)",
             "type": "shell",
             "command": "${workspaceFolder}/.venv/Scripts/python.exe",
@@ -120,7 +151,7 @@
             "type": "pickString",
             "description": "Training config (configs/*.yaml)",
             "options": ["tsp20", "cvrp20", "cvrp50", "cvrp100", "tsp20_rollout", "cvrp50_amazon",
-                        "cvrp50_amazon_all"],
+                        "cvrp50_amazon_all", "cvrptw50_amazon"],
             "default": "cvrp50"
         },
         {

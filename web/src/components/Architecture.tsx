@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { type ReactNode, useEffect, useRef, useState } from "react";
 
 import { pct } from "../format";
 import type { DemoIndex } from "../types";
@@ -17,8 +17,8 @@ interface Item {
 function Flow({ steps }: { steps: Item[] }) {
   return (
     <ol className="flow">
-      {steps.map((s) => (
-        <li key={s.title} className="flow-step">
+      {steps.map((s, i) => (
+        <li key={s.title} className="flow-step" data-n={i + 1}>
           {s.tag && <span className="flow-tag">{s.tag}</span>}
           <p className="card-title">{s.title}</p>
           <p className="card-text">{s.text}</p>
@@ -53,14 +53,91 @@ function Layer({ name, detail, kind }: { name: string; detail: string; kind?: "i
   );
 }
 
+// the eight parts: short name for the index, colour, and the one thing to remember
+const PARTS = [
+  { short: "Pipeline", hue: "var(--route)", key: "Six independent, tested stages, from raw data to this page." },
+  { short: "Data & judging", hue: "var(--iberia)", key: "Trained and tested on different routes; every plan scored by one judge." },
+  { short: "Inputs", hue: "var(--uni)", key: "How the stops are represented mattered as much as the network." },
+  { short: "The network", hue: "var(--truco)", key: "A Transformer whose attention knows the real driving times." },
+  { short: "Learning", hue: "var(--poke)", key: "No examples to copy: it learned from the length of its own routes." },
+  { short: "Inference", hue: "var(--indigo)", key: "The network proposes, classic search perfects, within the time given." },
+  { short: "Station-days", hue: "var(--route)", key: "Split the day by van, route each one, then trade stops between vans." },
+  { short: "Software", hue: "var(--uni)", key: "One typed, tested package; every number reproducible from the command line." },
+];
+
 function Part({ n, title, intro, children }: { n: number; title: string; intro: ReactNode; children: ReactNode }) {
+  const p = PARTS[n - 1];
   return (
-    <div className="arch-part">
-      <p className="eyebrow">Part {n} of 8</p>
-      <h3>{title}</h3>
+    <div className="arch-part" id={`part-${n}`} style={{ ["--hue" as string]: p.hue }}>
+      <div className="part-head">
+        <span className="part-n">{String(n).padStart(2, "0")}</span>
+        <div>
+          <p className="eyebrow">Part {n} of 8 · {p.short}</p>
+          <h3>{title}</h3>
+        </div>
+      </div>
+      <p className="takeaway">
+        <span>In short</span>
+        {p.key}
+      </p>
       <p className="prose">{intro}</p>
       {children}
     </div>
+  );
+}
+
+/** Sticky index of the eight parts that follows the reader (a row of chips on narrow screens). */
+function Rail() {
+  const [active, setActive] = useState(1);
+  const list = useRef<HTMLOListElement>(null);
+  useEffect(() => {
+    // the active part is the last one whose top has passed 40% of the screen
+    let frame = 0;
+    const update = () => {
+      frame = 0;
+      const line = window.innerHeight * 0.4;
+      let n = 1;
+      PARTS.forEach((_, i) => {
+        const el = document.getElementById(`part-${i + 1}`);
+        if (el && el.getBoundingClientRect().top <= line) n = i + 1;
+      });
+      setActive(n);
+    };
+    const onScroll = () => {
+      if (!frame) frame = requestAnimationFrame(update);
+    };
+    update();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      cancelAnimationFrame(frame);
+    };
+  }, []);
+  // on narrow screens the index is a scrolling row: keep the active chip in sight
+  useEffect(() => {
+    const ol = list.current;
+    const chip = ol?.children[active - 1] as HTMLElement | undefined;
+    if (ol && chip && ol.scrollWidth > ol.clientWidth) {
+      ol.scrollTo({ left: chip.offsetLeft - (ol.clientWidth - chip.offsetWidth) / 2, behavior: "smooth" });
+    }
+  }, [active]);
+  return (
+    <nav className="rail" aria-label="Parts of the architecture">
+      <p className="eyebrow">8 parts</p>
+      <ol ref={list}>
+        {PARTS.map((p, i) => (
+          <li key={p.short} style={{ ["--hue" as string]: p.hue }}>
+            <a href={`#part-${i + 1}`} aria-current={active === i + 1 ? "step" : undefined}>
+              <span>{String(i + 1).padStart(2, "0")}</span>
+              {p.short}
+            </a>
+          </li>
+        ))}
+      </ol>
+      <div className="rail-progress" aria-hidden="true">
+        <i style={{ height: `${(100 * active) / PARTS.length}%` }} />
+      </div>
+    </nav>
   );
 }
 
@@ -80,6 +157,10 @@ export function Architecture({ index }: { index: DemoIndex }) {
         how whole days are planned, and the software around it. Every part was measured; the reasoning behind each
         choice is written up in 21 <a href={DECISIONS}>design decisions</a>.
       </p>
+
+      <div className="arch">
+        <Rail />
+        <div className="arch-body">
 
       <Part
         n={1}
@@ -203,10 +284,10 @@ export function Architecture({ index }: { index: DemoIndex }) {
           </div>
         </div>
         <p className="legend">
-          <span style={{ ["--c" as string]: "#888780" }}>inputs</span>
-          <span style={{ ["--c" as string]: "#ba7517" }}>driving-time information</span>
-          <span style={{ ["--c" as string]: "#0e7490" }}>learned layers</span>
-          <span style={{ ["--c" as string]: "#2f7d5b" }}>outputs</span>
+          <span style={{ ["--c" as string]: "var(--muted)" }}>inputs</span>
+          <span style={{ ["--c" as string]: "var(--iberia)" }}>driving-time information</span>
+          <span style={{ ["--c" as string]: "var(--route)" }}>learned layers</span>
+          <span style={{ ["--c" as string]: "var(--uni)" }}>outputs</span>
         </p>
         <Boxes
           items={[
@@ -385,6 +466,8 @@ export function Architecture({ index }: { index: DemoIndex }) {
           ]}
         />
       </Part>
+        </div>
+      </div>
     </section>
   );
 }

@@ -15,6 +15,17 @@
       rel="stylesheet"
     />
     <title>Neural Last-Mile Routing</title>
+    <meta name="theme-color" content="#f4f1ea" />
+    <script>
+      // theme before first paint: saved choice (shared with the portfolio), else the system's
+      (function () {
+        var t;
+        try { t = localStorage.getItem("theme"); } catch (e) {}
+        if (t !== "light" && t !== "dark") t = matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light";
+        document.documentElement.dataset.theme = t;
+        if (t === "dark") document.querySelector('meta[name="theme-color"]').content = "#121419";
+      })();
+    </script>
     <meta property="og:type" content="website" />
     <meta property="og:title" content="Neural last-mile routing" />
     <meta

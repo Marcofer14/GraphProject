@@ -1,5 +1,7 @@
 import { useRef, useState } from "react";
 
+import { useTheme } from "../theme";
+
 import type { DayDoc, DemoIndex, RouteDoc } from "../types";
 import { Guide } from "./Guide";
 import { HelpChat } from "./HelpChat";
@@ -46,7 +48,8 @@ export function Workspace({ index, routeId, onRoute, route, dayId, onDay, day }:
     if (top < 0 || top > window.innerHeight * 0.6) main.current?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
 
-  const shared = { routes: index.routes, routeId, onRoute, doc: route, dark: false };
+  const dark = useTheme() === "dark";
+  const shared = { routes: index.routes, routeId, onRoute, doc: route, dark };
   return (
     <section className="block" id="demo">
       <div className="sec-head">
@@ -80,7 +83,7 @@ export function Workspace({ index, routeId, onRoute, route, dayId, onDay, day }:
               dayId={dayId}
               onDay={onDay}
               doc={day}
-              dark={false}
+              dark={dark}
               replay={replay}
               onReplayed={() => setReplay(undefined)}
             />
